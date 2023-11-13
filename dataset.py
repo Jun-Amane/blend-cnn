@@ -53,7 +53,7 @@ class MultimodalDataset(Dataset):
 
         descriptions = self.descriptions[basename]
         tokenized_text = [self.text_tokenizer.encode(text, add_special_tokens=True) for text in descriptions]
-        max_len = 80
+        max_len = 128
         padded_text = [tokens + [0] * (max_len - len(tokens)) for tokens in tokenized_text]
         captions_tensor = torch.tensor(padded_text)
 
