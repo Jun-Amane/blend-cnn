@@ -11,7 +11,7 @@ class ALKA(nn.Module):
 
         # image CNN, in_channel=3, out=512
         self.image_model = torchvision.models.resnet18(weights=None)
-        self.image_features = nn.Sequential(*list(self.image_model.children())[:-1])
+        self.image_model = nn.Sequential(*list(self.image_model.children())[:-1])
 
         # For text embedding
         self.embedding = nn.EmbeddingBag(50000, 768, sparse=False)
@@ -28,7 +28,7 @@ class ALKA(nn.Module):
 
     def forward(self, image, captions):
         # Image feature extracting
-        image_features = self.image_features(image)
+        image_features = self.image_model(image)
 
         # Text feature extracting
         # Input B 10 W

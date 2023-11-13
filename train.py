@@ -1,36 +1,41 @@
 import torch
 import torchvision
 import torch.nn as nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 from torch.utils.tensorboard import SummaryWriter
 
 from ALKA import ALKA
-from dataset import MultimodalDataset
+from dataset import AlkaDataset
 
-training_device="cpu"
+training_device = "cpu"
 
 writer = SummaryWriter("logs")
 
 # Preparing the transforms
 # TODO: transforms
 data_tf = torchvision.transforms.Compose([torchvision.transforms.Resize((224, 224)),
-                                         torchvision.transforms.ToTensor()])
+                                          torchvision.transforms.ToTensor()])
 
 # Preparing the Dateset
 # TODO: DATASET
-train_data = MultimodalDataset('../dataset/102flowers', transform=data_tf)
-val_data = MultimodalDataset('../dataset/102flowers', transform=data_tf)
+alka_set = AlkaDataset('../dataset/102flowers', transform=data_tf)
+train_ratio = 0.8
+dataset_size = len(alka_set)
+train_size = int(train_ratio * dataset_size)
+test_size = dataset_size - train_size
 
-train_data_len = len(train_data)
-val_data_len = len(val_data)
+train_set, val_set = random_split(alka_set, [train_size, test_size])
 
-print(f"Train Data Length: {train_data_len}")
-print(f"Validation Data Length: {val_data_len}")
+train_set_len = len(train_set)
+val_set_len = len(val_set)
+
+print(f"Train Data Length: {train_set_len}")
+print(f"Validation Data Length: {val_set_len}")
 
 # Preparing the DataLoader
-batch_size=64
-train_data_loader = DataLoader(dataset=train_data, batch_size=batch_size)
-val_data_loader = DataLoader(dataset=val_data, batch_size=batch_size)
+batch_size = 64
+train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True)
+val_loader = DataLoader(dataset=val_set, batch_size=batch_size, shuffle=False)
 
 # Setting up the NN
 # TODO: num_classes
@@ -39,7 +44,7 @@ net_obj = ALKA(num_classes=num_classes)
 
 # Loss function & Optimisation
 loss_fn = nn.CrossEntropyLoss()
-optimiser = torch.optim.Adam(net_obj.parameters(), lr=0.001)
+optimiser = torch.optim.Adam(net_obj.parameters(), lr=0.001)  # whether it needs weight_decay=0.001
 
 # Some training settings
 total_train_step = 0
@@ -51,7 +56,7 @@ for i in range(epoch):
 
     # Training
     net_obj.train()
-    for images, captions, labels in train_data_loader:
+    for images, captions, labels in train_loader:
         images = images.to(training_device)
         captions = captions.to(training_device)
         labels = labels.to(training_device)
@@ -74,7 +79,7 @@ for i in range(epoch):
     total_accuracy = 0
     net_obj.eval()
     with torch.no_grad():
-        for images, text, labels in val_data_loader:
+        for images, text, labels in val_loader:
             images = images.to(training_device)
             outputs = net_obj(images, text)
             loss = loss_fn(outputs, labels)
@@ -85,9 +90,9 @@ for i in range(epoch):
 
         total_val_step += 1
         print(f"Total Loss on Dataset: {total_step_loss}")
-        print(f"Total Accuracy on Dataset: {total_accuracy / val_data_len}")
+        print(f"Total Accuracy on Dataset: {total_accuracy / val_set_len}")
         writer.add_scalar("val_loss", total_step_loss, total_val_step)
-        writer.add_scalar("val_acc", total_accuracy / val_data_len, total_val_step)
+        writer.add_scalar("val_acc", total_accuracy / val_set_len, total_val_step)
 
     # torch.save(net_obj.state_dict(), f"Saved_{i}.pth")
     # print("Saved.")

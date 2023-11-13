@@ -5,7 +5,7 @@ import torch
 from transformers import BertModel, BertTokenizer
 
 
-class MultimodalDataset(Dataset):
+class AlkaDataset(Dataset):
     def __init__(self, root_dir, transform=None):
         self.root_dir = root_dir
         self.transform = transform
