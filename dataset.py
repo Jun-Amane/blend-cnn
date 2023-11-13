@@ -33,7 +33,7 @@ class MultimodalDataset(Dataset):
                     lines = file.readlines()
                     descriptions[basename] = [line.strip() for line in lines]
                     class_hash_table[basename] = self.classes[i]
-                    class_list.append(self.classes[i])
+            class_list.append(self.classes[i])
 
         return descriptions, class_hash_table, class_list
 

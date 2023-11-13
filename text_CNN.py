@@ -8,10 +8,10 @@ class textResNet(nn.Module):
         super().__init__(*args, **kwargs)
 
         self.pre_conv = nn.Conv2d(1, 3, kernel_size=3, padding=1)
-        resnet = models.resnet50(weights=None)
-        self.resnet_conv = nn.Sequential(*list(resnet.children())[:-1])
+        resnet = models.resnet18(weights=None)
+        self.resnet_conv = nn.Sequential(*list(resnet.children())[:-2])
 
-        self.conv1d = nn.Conv1d(2048, 256, kernel_size=3, padding=1)
+        self.conv1d = nn.Conv1d(512, 256, kernel_size=3, padding=1)
         self.fc = nn.Linear(256, num_classes)
 
     def forward(self, x):

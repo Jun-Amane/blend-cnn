@@ -10,12 +10,11 @@ class ALKA(nn.Module):
         super().__init__(*args, **kwargs)
 
         # image CNN, in_channel=3, out=512
-        self.image_model = torchvision.models.resnet50(weights=None)
+        self.image_model = torchvision.models.resnet18(weights=None)
         self.image_features = nn.Sequential(*list(self.image_model.children())[:-1])
-        self.image_features.append(nn.Linear(in_features=2048, out_features=512))
 
         # For text embedding
-        self.embedding = nn.EmbeddingBag(50000, 768, sparse=True)
+        self.embedding = nn.EmbeddingBag(50000, 768, sparse=False)
 
         # text CNN, in_channel=1, out=num_classes=512
         self.text_cnn = textResNet(num_classes=512)
@@ -49,7 +48,7 @@ class ALKA(nn.Module):
 
         # mixing the dim 1, to B C H W
         text_pooled = torch.mean(captions_output, dim=1)
-        text_pooled = text_pooled.unsqueeze(0)
+        # text_pooled = text_pooled.unsqueeze(0)
 
         # MM fusion
         fusion_input = torch.cat((image_features.view(image_features.size(0), -1), text_pooled), dim=1)
