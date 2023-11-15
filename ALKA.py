@@ -21,8 +21,10 @@ class ALKA(nn.Module):
 
         # MM fusion
         self.fc_fusion = nn.Sequential(
+            nn.Dropout(),
             nn.Linear(512 + 512, 256),
             nn.ReLU(),
+            nn.Dropout(),
             nn.Linear(256, num_classes)
         )
 
