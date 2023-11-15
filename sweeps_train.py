@@ -16,13 +16,10 @@ wandb.login()
 wandb.init(
     # Set the project where this run will be logged
     project="alka",
-    name=f"experiment_15-Nov-22:08",
+    name=f"sweeps-16-Nov-00:54",
     # Track hyperparameters and run metadata
     config={
-        "learning_rate": 0.001,
-        "batchsize": 256,
         "dataset": "AlkaSet",
-        "epochs": 50,
     })
 # sweeps for wandb
 sweep_config = {
