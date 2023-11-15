@@ -13,8 +13,11 @@ writer = SummaryWriter("logs")
 
 # Preparing the transforms
 # TODO: transforms
-data_tf = torchvision.transforms.Compose([torchvision.transforms.Resize((224, 224)),
-                                          torchvision.transforms.ToTensor()])
+data_tf = torchvision.transforms.Compose([
+    torchvision.transforms.Resize((224, 224)),
+    torchvision.transforms.RandomHorizontalFlip(),
+    torchvision.transforms.ToTensor(),
+    torchvision.transforms.Normalize((0.4355, 0.3777, 0.2879), (0.2653, 0.2124, 0.2194))])
 
 # Preparing the Dateset
 # TODO: DATASET
@@ -40,11 +43,11 @@ val_loader = DataLoader(dataset=val_set, batch_size=batch_size, shuffle=False)
 # Setting up the NN
 # TODO: num_classes
 num_classes = 102
-net_obj = ALKA(num_classes=num_classes)
+net_obj = ALKA(num_classes=num_classes).to(training_device)
 
 # Loss function & Optimisation
 loss_fn = nn.CrossEntropyLoss()
-optimiser = torch.optim.Adam(net_obj.parameters(), lr=0.001)  # whether it needs weight_decay=0.001
+optimiser = torch.optim.Adam(net_obj.parameters(), lr=0.001)  # TODO: lr adjusting & whether it needs weight_decay=0.001
 
 # Some training settings
 total_train_step = 0
@@ -70,18 +73,21 @@ for i in range(epoch):
 
         total_train_step += 1
 
-        if total_train_step % 100 == 0:
-            print(f"Training Step: {total_train_step}, Loss: {loss.item()}")
-            writer.add_scalar("train_loss", loss.item(), total_train_step)
+        # if total_train_step % 100 == 0:
+        print(f"Training Step: {total_train_step}, Loss: {loss.item()}")
+        writer.add_scalar("train_loss", loss.item(), total_train_step)
 
     # Validating
     total_step_loss = 0
     total_accuracy = 0
     net_obj.eval()
+    print(f"**************** Validating Epoch: {i + 1} ****************")
     with torch.no_grad():
-        for images, text, labels in val_loader:
+        for images, captions, labels in val_loader:
             images = images.to(training_device)
-            outputs = net_obj(images, text)
+            captions = captions.to(training_device)
+            labels = labels.to(training_device)
+            outputs = net_obj(images, captions)
             loss = loss_fn(outputs, labels)
             total_step_loss += loss.item()
 
