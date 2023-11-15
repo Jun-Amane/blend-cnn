@@ -2,14 +2,30 @@ import torch
 import torchvision
 import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
-from torch.utils.tensorboard import SummaryWriter
+# from torch.utils.tensorboard import SummaryWriter
+import wandb
+import pprint
 
 from ALKA import ALKA
 from dataset import AlkaDataset
 
 training_device = "cpu"
 
-writer = SummaryWriter("logs")
+# writer = SummaryWriter("logs")
+
+# Wandb configs
+wandb.login()
+wandb.init(
+    # Set the project where this run will be logged
+    project="alka",
+    name=f"experiment_15-Nov-22:08",
+    # Track hyperparameters and run metadata
+    config={
+        "learning_rate": 0.001,
+        "batchsize": 256,
+        "dataset": "AlkaSet",
+        "epochs": 50,
+    })
 
 # Preparing the transforms
 # TODO: transforms
@@ -75,7 +91,8 @@ for i in range(epoch):
 
         # if total_train_step % 100 == 0:
         print(f"Training Step: {total_train_step}, Loss: {loss.item()}")
-        writer.add_scalar("train_loss", loss.item(), total_train_step)
+        # writer.add_scalar("train_loss", loss.item(), total_train_step)
+        wandb.log({"train_loss": loss.item()})
 
     # Validating
     total_step_loss = 0
@@ -97,10 +114,12 @@ for i in range(epoch):
         total_val_step += 1
         print(f"Total Loss on Dataset: {total_step_loss}")
         print(f"Total Accuracy on Dataset: {total_accuracy / val_set_len}")
-        writer.add_scalar("val_loss", total_step_loss, total_val_step)
-        writer.add_scalar("val_acc", total_accuracy / val_set_len, total_val_step)
+        # writer.add_scalar("val_loss", total_step_loss, total_val_step)
+        # writer.add_scalar("val_acc", total_accuracy / val_set_len, total_val_step)
+        wandb.log({"val_acc": total_accuracy / val_set_len, "val_loss": total_step_loss})
 
     # torch.save(net_obj.state_dict(), f"Saved_{i}.pth")
     # print("Saved.")
 
-writer.close()
+# writer.close()
+wandb.finish()

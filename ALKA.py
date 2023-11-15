@@ -6,7 +6,7 @@ from text_CNN import textResNet
 
 
 class ALKA(nn.Module):
-    def __init__(self, num_classes, *args, **kwargs):
+    def __init__(self, num_classes, text_CNN_num_classes, dropout, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # image CNN, in_channel=3, out=512
@@ -17,14 +17,14 @@ class ALKA(nn.Module):
         self.embedding = nn.EmbeddingBag(50000, 768, sparse=False)
 
         # text CNN, in_channel=1, out=num_classes=512
-        self.text_cnn = textResNet(num_classes=512)
+        self.text_cnn = textResNet(num_classes=text_CNN_num_classes, dropout=dropout)
 
         # MM fusion
         self.fc_fusion = nn.Sequential(
-            nn.Dropout(),
-            nn.Linear(512 + 512, 256),
+            nn.Dropout(p=dropout),
+            nn.Linear(512 + text_CNN_num_classes, 256),
             nn.ReLU(),
-            nn.Dropout(),
+            nn.Dropout(p=dropout),
             nn.Linear(256, num_classes)
         )
 

@@ -4,7 +4,7 @@ import torchvision.models as models
 
 
 class textResNet(nn.Module):
-    def __init__(self, num_classes, *args, **kwargs):
+    def __init__(self, num_classes, dropout, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.pre_conv = nn.Conv2d(1, 3, kernel_size=3, padding=1)
@@ -12,7 +12,7 @@ class textResNet(nn.Module):
         self.resnet_conv = nn.Sequential(*list(resnet.children())[:-2])
         self.post_conv = nn.Sequential(nn.Conv1d(512, 256, kernel_size=3, padding=1),
                                     nn.ReLU(),
-                                    nn.Dropout()
+                                    nn.Dropout(p=dropout)
                                     )
 
         self.fc = nn.Linear(256, num_classes)
