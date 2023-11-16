@@ -3,6 +3,7 @@ import torch.nn as nn
 import torchvision
 # from transformers import BertModel, BertTokenizer
 from text_CNN import textResNet
+from multihead_attention import MultiHeadAttention
 
 
 class ALKA(nn.Module):
@@ -19,10 +20,15 @@ class ALKA(nn.Module):
         # text CNN, in_channel=1, out=num_classes=512
         self.text_cnn = textResNet(num_classes=text_CNN_num_classes, dropout=dropout)
 
+        # ASSUME THAT input_size = text_CNN_clases = 512
+        num_heads = 8
+        input_size = 512
+        self.attn_fusion = MultiHeadAttention(input_size, num_heads)
+
         # MM fusion
         self.fc_fusion = nn.Sequential(
             nn.Dropout(p=dropout),
-            nn.Linear(512 + text_CNN_num_classes, 256),
+            nn.Linear(512 + 512, 256),
             nn.ReLU(),
             nn.Dropout(p=dropout),
             nn.Linear(256, num_classes)
@@ -53,7 +59,11 @@ class ALKA(nn.Module):
         # text_pooled = text_pooled.unsqueeze(0)
 
         # MM fusion
-        fusion_input = torch.cat((image_features.view(image_features.size(0), -1), text_pooled), dim=1)
+        # fusion_input = torch.cat((image_features.view(image_features.size(0), -1), text_pooled), dim=1)
+        # output = self.fc_fusion(fusion_input)
+        text_attn = self.attn_fusion(text_pooled)
+        img_attn = self.attn_fusion(image_features.view(image_features.size(0), -1))
+        fusion_input = torch.cat((img_attn.squeeze(), text_attn.squeeze()), dim=1)
         output = self.fc_fusion(fusion_input)
 
         return output
@@ -62,3 +72,4 @@ class ALKA(nn.Module):
 num_classes = 102
 model = ALKA(num_classes=num_classes)
 print(model)
+
