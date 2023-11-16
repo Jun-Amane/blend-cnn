@@ -26,7 +26,7 @@ sweep_config = {
     'method': 'random'
 }
 metric = {
-    'name': 'val_loss',
+    'name': 'train_loss',
     'goal': 'minimize'
 }
 

@@ -1,3 +1,4 @@
+import os
 import torch
 import torchvision
 import torch.nn as nn
@@ -13,19 +14,25 @@ training_device = "cpu"
 
 # writer = SummaryWriter("logs")
 
+os.environ["WANDB_API_KEY"] = ''
+os.environ["WANDB_MODE"] = "offline"
+
 # Wandb configs
-wandb.login()
+# wandb.login()
 wandb.init(
     # Set the project where this run will be logged
     project="alka",
-    name=f"experiment_15-Nov-22:08",
+    name=f"batch_size_selection",
     # Track hyperparameters and run metadata
     config={
         "learning_rate": 0.001,
-        "batchsize": 256,
+        "batch_size": 256,
         "dataset": "AlkaSet",
         "epochs": 50,
     })
+
+
+
 
 # Preparing the transforms
 # TODO: transforms
