@@ -54,7 +54,7 @@ print(f"Train Data Length: {train_set_len}")
 print(f"Validation Data Length: {val_set_len}")
 
 # Preparing the DataLoader
-batch_size = 64
+batch_size = wandb.config.batch_size
 train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True)
 val_loader = DataLoader(dataset=val_set, batch_size=batch_size, shuffle=False)
 
@@ -70,7 +70,7 @@ optimiser = torch.optim.Adam(net_obj.parameters(), lr=0.001)  # TODO: lr adjusti
 # Some training settings
 total_train_step = 0
 total_val_step = 0
-epoch = 50
+epoch = wandb.config.epoch
 
 for i in range(epoch):
     print(f"**************** Training Epoch: {i + 1} ****************")
