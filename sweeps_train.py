@@ -82,7 +82,8 @@ def train(config=None):
 
         loader = build_dataset(config.batch_size)
         network = build_network(config.text_CNN_num_classes, config.dropout)
-        optimizer = build_optimizer(network=network, optimizer=config.optimizer, learning_rate=config.learning_rate, weight_decay=config.weight_decay)
+        optimizer = build_optimizer(network=network, optimizer=config.optimizer, learning_rate=config.learning_rate,
+                                    weight_decay=config.weight_decay)
 
         for epoch in range(config.epochs):
             avg_loss = train_epoch(network, loader, optimizer)
@@ -156,3 +157,5 @@ def train_epoch(net_obj, train_loader, optimizer):
 
     return cumu_loss / len(train_loader)
 
+
+wandb.agent(sweep_id, train, count=5)
