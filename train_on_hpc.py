@@ -24,13 +24,12 @@ os.environ["WANDB_MODE"] = "offline"
 wandb.init(
     # Set the project where this run will be logged
     project="alka",
-    name=f"batch_size_selection",
     # Track hyperparameters and run metadata
     config={
         "learning_rate": 0.001,
         "batch_size": 256,
         "dataset": "AlkaSet",
-        "epochs": 50,
+        "epochs": 80,
     })
 
 # Preparing the transforms
@@ -58,7 +57,7 @@ print(f"Train Data Length: {train_set_len}")
 print(f"Validation Data Length: {val_set_len}")
 
 # Preparing the DataLoader
-batch_size = 64
+batch_size = wandb.config.batch_size
 train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True)
 val_loader = DataLoader(dataset=val_set, batch_size=batch_size, shuffle=False)
 
@@ -104,6 +103,7 @@ for i in range(epoch):
     total_step_loss = 0
     total_accuracy = 0
     net_obj.eval()
+    steps_per_epoch = 0
     print(f"**************** Validating Epoch: {i + 1} ****************")
     with torch.no_grad():
         for images, captions, labels in val_loader:
@@ -113,16 +113,17 @@ for i in range(epoch):
             outputs = net_obj(images, captions)
             loss = loss_fn(outputs, labels)
             total_step_loss += loss.item()
+            steps_per_epoch += 1
 
             step_accuracy = (outputs.argmax(1) == labels).sum()
             total_accuracy += step_accuracy
 
         total_val_step += 1
-        print(f"Total Loss on Dataset: {total_step_loss}")
+        print(f"Total Loss on Dataset: {total_step_loss / steps_per_epoch}")
         print(f"Total Accuracy on Dataset: {total_accuracy / val_set_len}")
         # writer.add_scalar("val_loss", total_step_loss, total_val_step)
         # writer.add_scalar("val_acc", total_accuracy / val_set_len, total_val_step)
-        wandb.log({"val_acc": total_accuracy / val_set_len, "val_loss": total_step_loss})
+        wandb.log({"val_acc": total_accuracy / val_set_len, "val_loss": total_step_loss / steps_per_epoch})
 
     # torch.save(net_obj.state_dict(), f"Saved_{i}.pth")
     # print("Saved.")

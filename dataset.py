@@ -19,12 +19,11 @@ class AlkaDataset(Dataset):
 
         # BERT out=768
         if local_bert:
-            self.text_model = BertModel.from_pretrained("bert-base-uncased")
-            self.text_tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-        else:
             self.text_model = BertModel.from_pretrained(local_bert_path)
             self.text_tokenizer = BertTokenizer.from_pretrained(local_bert_path)
-
+        else:
+            self.text_model = BertModel.from_pretrained("bert-base-uncased")
+            self.text_tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 
     def load_descriptions(self):
         descriptions = {}

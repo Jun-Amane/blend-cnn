@@ -14,9 +14,6 @@ training_device = "cpu"
 
 # writer = SummaryWriter("logs")
 
-os.environ["WANDB_API_KEY"] = ''
-os.environ["WANDB_MODE"] = "offline"
-
 # Wandb configs
 # wandb.login()
 wandb.init(
@@ -101,6 +98,7 @@ for i in range(epoch):
     # Validating
     total_step_loss = 0
     total_accuracy = 0
+    steps_per_epoch = 0
     net_obj.eval()
     print(f"**************** Validating Epoch: {i + 1} ****************")
     with torch.no_grad():
@@ -111,16 +109,17 @@ for i in range(epoch):
             outputs = net_obj(images, captions)
             loss = loss_fn(outputs, labels)
             total_step_loss += loss.item()
+            steps_per_epoch += 1
 
             step_accuracy = (outputs.argmax(1) == labels).sum()
             total_accuracy += step_accuracy
 
         total_val_step += 1
-        print(f"Total Loss on Dataset: {total_step_loss}")
+        print(f"Total Loss on Dataset: {total_step_loss / steps_per_epoch}")
         print(f"Total Accuracy on Dataset: {total_accuracy / val_set_len}")
         # writer.add_scalar("val_loss", total_step_loss, total_val_step)
         # writer.add_scalar("val_acc", total_accuracy / val_set_len, total_val_step)
-        wandb.log({"val_acc": total_accuracy / val_set_len, "val_loss": total_step_loss})
+        wandb.log({"val_acc": total_accuracy / val_set_len, "val_loss": total_step_loss / steps_per_epoch})
 
     # torch.save(net_obj.state_dict(), f"Saved_{i}.pth")
     # print("Saved.")

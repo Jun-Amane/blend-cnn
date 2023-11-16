@@ -6,7 +6,7 @@ from text_CNN import textResNet
 
 
 class ALKA(nn.Module):
-    def __init__(self, num_classes, text_CNN_num_classes, dropout, *args, **kwargs):
+    def __init__(self, num_classes, text_CNN_num_classes=512, dropout=0.5, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # image CNN, in_channel=3, out=512
