@@ -10,8 +10,10 @@ import pprint
 from ALKA import ALKA
 from dataset import AlkaDataset
 
-training_device = "cpu"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+training_device = "cuda"
 
+print(torch.cuda.is_available())
 # writer = SummaryWriter("logs")
 
 os.environ["WANDB_API_KEY"] = ''
@@ -41,7 +43,7 @@ data_tf = torchvision.transforms.Compose([
 
 # Preparing the Dateset
 # TODO: DATASET
-alka_set = AlkaDataset('../dataset/102flowers', transform=data_tf)
+alka_set = AlkaDataset('../dataset/102flowers', transform=data_tf, local_bert=True)
 train_ratio = 0.8
 dataset_size = len(alka_set)
 train_size = int(train_ratio * dataset_size)

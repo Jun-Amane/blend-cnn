@@ -6,7 +6,7 @@ from transformers import BertModel, BertTokenizer
 
 
 class AlkaDataset(Dataset):
-    def __init__(self, root_dir, transform=None):
+    def __init__(self, root_dir, local_bert=False, local_bert_path='../bert-base-uncased', transform=None):
         self.root_dir = root_dir
         self.transform = transform
         self.image_folder = os.path.join(root_dir, '102flowers')
@@ -18,8 +18,13 @@ class AlkaDataset(Dataset):
         self.descriptions, self.class_hash_table, self.class_list = self.load_descriptions()
 
         # BERT out=768
-        self.text_model = BertModel.from_pretrained("bert-base-uncased")
-        self.text_tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+        if local_bert:
+            self.text_model = BertModel.from_pretrained("bert-base-uncased")
+            self.text_tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+        else:
+            self.text_model = BertModel.from_pretrained(local_bert_path)
+            self.text_tokenizer = BertTokenizer.from_pretrained(local_bert_path)
+
 
     def load_descriptions(self):
         descriptions = {}
