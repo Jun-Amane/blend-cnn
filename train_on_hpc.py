@@ -74,7 +74,7 @@ optimiser = torch.optim.Adam(net_obj.parameters(), lr=0.001)  # TODO: lr adjusti
 # Some training settings
 total_train_step = 0
 total_val_step = 0
-epoch = 50
+epoch = epoch = wandb.config.epochs
 
 for i in range(epoch):
     print(f"**************** Training Epoch: {i + 1} ****************")

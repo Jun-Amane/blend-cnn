@@ -6,22 +6,26 @@ from text_CNN import textResNet
 
 
 class ALKA(nn.Module):
-    def __init__(self, num_classes, *args, **kwargs):
+    def __init__(self, num_classes, text_CNN_num_classes=512, dropout=0.5, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # image CNN, in_channel=3, out=102
+        # image CNN, in_channel=3, out=512
         self.image_model = torchvision.models.resnet18(weights=None)
-        self.image_model.fc = nn.Linear(in_features=512, out_features=102)
+        self.image_model = nn.Sequential(*list(self.image_model.children())[:-1])
 
         # For text embedding
         self.embedding = nn.EmbeddingBag(50000, 768, sparse=False)
 
-        # text CNN, in_channel=1, out=num_classes=102
-        self.text_cnn = textResNet()
+        # text CNN, in_channel=1, out=num_classes=512
+        self.text_cnn = textResNet(num_classes=text_CNN_num_classes, dropout=dropout)
 
         # MM fusion
         self.fc_fusion = nn.Sequential(
-            nn.Linear(in_features=204, out_features=102)
+            nn.Dropout(p=dropout),
+            nn.Linear(512 + text_CNN_num_classes, 256),
+            nn.ReLU(),
+            nn.Dropout(p=dropout),
+            nn.Linear(256, num_classes)
         )
 
     def forward(self, image, captions):
@@ -49,7 +53,7 @@ class ALKA(nn.Module):
         # text_pooled = text_pooled.unsqueeze(0)
 
         # MM fusion
-        fusion_input = torch.cat((torch.mul(0.5, (image_features.view(image_features.size(0), -1))), torch.mul(0.5, text_pooled)), dim=1)
+        fusion_input = torch.cat((image_features.view(image_features.size(0), -1), text_pooled), dim=1)
         output = self.fc_fusion(fusion_input)
 
         return output
