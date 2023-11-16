@@ -19,13 +19,14 @@ training_device = "cpu"
 wandb.init(
     # Set the project where this run will be logged
     project="alka",
-    name=f"batch_size_selection",
+    name=f"debug",
     # Track hyperparameters and run metadata
     config={
         "learning_rate": 0.001,
-        "batch_size": 256,
+        "weight_decay": 'absent',
+        "batch_size": 128,
         "dataset": "AlkaSet",
-        "epochs": 50,
+        "epochs": 80,
     })
 
 # Preparing the transforms

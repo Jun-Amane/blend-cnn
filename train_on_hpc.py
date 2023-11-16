@@ -27,7 +27,8 @@ wandb.init(
     # Track hyperparameters and run metadata
     config={
         "learning_rate": 0.001,
-        "batch_size": 256,
+        "weight_decay": 'absent',
+        "batch_size": 128,
         "dataset": "AlkaSet",
         "epochs": 80,
     })
