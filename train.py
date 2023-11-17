@@ -13,19 +13,22 @@ from dataset import AlkaDataset
 training_device = "cpu"
 
 # writer = SummaryWriter("logs")
+os.environ["WANDB_MODE"] = "offline"
 
 # Wandb configs
 # wandb.login()
 wandb.init(
     # Set the project where this run will be logged
     project="alka",
-    name=f"batch_size_selection",
     # Track hyperparameters and run metadata
     config={
+        "model": "alka-master",
         "learning_rate": 0.001,
-        "batch_size": 256,
+        "weight_decay": 0.0001,
+        "dropout": 0.5,
+        "batch_size": 128,
         "dataset": "AlkaSet",
-        "epochs": 50,
+        "epochs": 80,
     })
 
 # Preparing the transforms
@@ -53,23 +56,24 @@ print(f"Train Data Length: {train_set_len}")
 print(f"Validation Data Length: {val_set_len}")
 
 # Preparing the DataLoader
-batch_size = 64
+batch_size = wandb.config.batch_size
 train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True)
 val_loader = DataLoader(dataset=val_set, batch_size=batch_size, shuffle=False)
 
 # Setting up the NN
 # TODO: num_classes
 num_classes = 102
-net_obj = ALKA(num_classes=num_classes).to(training_device)
+net_obj = ALKA(num_classes=num_classes, dropout=wandb.config.dropout).to(training_device)
 
 # Loss function & Optimisation
 loss_fn = nn.CrossEntropyLoss()
-optimiser = torch.optim.Adam(net_obj.parameters(), lr=0.001)  # TODO: lr adjusting & whether it needs weight_decay=0.001
+optimiser = torch.optim.Adam(net_obj.parameters(), lr=wandb.config.learning_rate,
+                             weight_decay=wandb.config.weight_decay)
 
 # Some training settings
 total_train_step = 0
 total_val_step = 0
-epoch = 50
+epoch = wandb.config.epochs
 
 for i in range(epoch):
     print(f"**************** Training Epoch: {i + 1} ****************")

@@ -6,7 +6,7 @@ from text_CNN import textResNet
 
 
 class ALKA(nn.Module):
-    def __init__(self, num_classes, text_CNN_num_classes=512, dropout=0.5, *args, **kwargs):
+    def __init__(self, num_classes, dropout=0.5, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # image CNN, in_channel=3, out=512
@@ -17,12 +17,12 @@ class ALKA(nn.Module):
         self.embedding = nn.EmbeddingBag(50000, 768, sparse=False)
 
         # text CNN, in_channel=1, out=num_classes=512
-        self.text_cnn = textResNet(num_classes=text_CNN_num_classes, dropout=dropout)
+        self.text_cnn = textResNet(num_classes=512, dropout=dropout)
 
         # MM fusion
         self.fc_fusion = nn.Sequential(
             nn.Dropout(p=dropout),
-            nn.Linear(512 + text_CNN_num_classes, 256),
+            nn.Linear(512 + 512, 256),
             nn.ReLU(),
             nn.Dropout(p=dropout),
             nn.Linear(256, num_classes)
@@ -34,26 +34,26 @@ class ALKA(nn.Module):
 
         # Text feature extracting
         # Input B 10 W
-        # to make it to 2D, flatten with dim2
+        # Convert to B C=10 H=1 W
+
         captions_list = []
         for i in range(captions.size(1)):
             current_dimension_data = captions[:, i, :]
             embedded = self.embedding(current_dimension_data)
             embedded = embedded.unsqueeze(
-                1).unsqueeze(1)  # to B C=1 H=1 W
-
-            text_output = self.text_cnn(embedded)
-            captions_list.append(text_output)
-
-        # stack to B 10 C H W
+                1)  # to B H=1 W
+            captions_list.append(embedded)
+        # stack to B C=10 H W
         captions_output = torch.stack(captions_list, dim=1)
 
+        text_output = self.text_cnn(captions_output)
+
         # mixing the dim 1, to B C H W
-        text_pooled = torch.mean(captions_output, dim=1)
+        # text_pooled = torch.mean(text_output, dim=1)
         # text_pooled = text_pooled.unsqueeze(0)
 
         # MM fusion
-        fusion_input = torch.cat((image_features.view(image_features.size(0), -1), text_pooled), dim=1)
+        fusion_input = torch.cat((image_features.view(image_features.size(0), -1), text_output), dim=1)
         output = self.fc_fusion(fusion_input)
 
         return output
@@ -62,3 +62,4 @@ class ALKA(nn.Module):
 num_classes = 102
 model = ALKA(num_classes=num_classes)
 print(model)
+

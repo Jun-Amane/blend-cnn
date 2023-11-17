@@ -7,8 +7,8 @@ class textResNet(nn.Module):
     def __init__(self, num_classes, dropout, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.pre_conv = nn.Conv2d(1, 3, kernel_size=3, padding=1)
         resnet = models.resnet18(weights=None)
+        resnet.conv1 = nn.Conv2d(in_channels=10, out_channels=64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
         self.resnet_conv = nn.Sequential(*list(resnet.children())[:-2])
         self.post_conv = nn.Sequential(nn.Conv1d(512, 256, kernel_size=3, padding=1),
                                     nn.ReLU(),
@@ -19,7 +19,6 @@ class textResNet(nn.Module):
 
     def forward(self, x):
 
-        x = self.pre_conv(x)
         features = self.resnet_conv(x)
         features = self.post_conv(
             features.squeeze())
