@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 import torchvision
-# from transformers import BertModel, BertTokenizer
 from text_CNN import textResNet
+from alka_LSTM import AlkaLSTM
 
 
 class ALKA(nn.Module):
@@ -14,10 +14,12 @@ class ALKA(nn.Module):
         self.image_model = nn.Sequential(*list(self.image_model.children())[:-1])
 
         # For text embedding
-        self.embedding = nn.EmbeddingBag(50000, 768, sparse=False)
+        #self.embedding = nn.EmbeddingBag(50000, 768, sparse=False)
 
         # text CNN, in_channel=1, out=num_classes=512
-        self.text_cnn = textResNet(num_classes=512, dropout=dropout)
+        # self.text_cnn = textResNet(num_classes=512, dropout=dropout)
+
+        self.text_lstm = AlkaLSTM(embedding_dim=768, hidden_dim=256, tagset_size=512)
 
         # MM fusion
         self.fc_fusion = nn.Sequential(
@@ -31,29 +33,31 @@ class ALKA(nn.Module):
     def forward(self, image, captions):
         # Image feature extracting
         image_features = self.image_model(image)
+        image_features = image_features.view(image_features.size(0), -1)
+        image_features = torch.nn.functional.log_softmax(image_features, dim=1)
 
         # Text feature extracting
-        # Input B 10 W
-        # Convert to B C=10 H=1 W
+        # Input B 10 128(padding) 768
 
         captions_list = []
         for i in range(captions.size(1)):
             current_dimension_data = captions[:, i, :]
-            embedded = self.embedding(current_dimension_data)
-            embedded = embedded.unsqueeze(
-                1)  # to B H=1 W
-            captions_list.append(embedded)
+            lstm_out = self.text_lstm(current_dimension_data)
+            # embedded = self.embedding(current_dimension_data)
+            # embedded = embedded.unsqueeze(
+            #     1)  # to B H=1 W
+            captions_list.append(lstm_out)
         # stack to B C=10 H W
-        captions_output = torch.stack(captions_list, dim=1)
+        text_output = torch.stack(captions_list, dim=1)
 
-        text_output = self.text_cnn(captions_output)
+        # text_output = self.text_cnn(captions_output)
 
         # mixing the dim 1, to B C H W
-        # text_pooled = torch.mean(text_output, dim=1)
+        text_pooled = torch.mean(text_output, dim=1)
         # text_pooled = text_pooled.unsqueeze(0)
 
         # MM fusion
-        fusion_input = torch.cat((image_features.view(image_features.size(0), -1), text_output), dim=1)
+        fusion_input = torch.cat((image_features, text_pooled), dim=1)
         output = self.fc_fusion(fusion_input)
 
         return output
