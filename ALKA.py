@@ -14,7 +14,7 @@ class ALKA(nn.Module):
         self.image_model = nn.Sequential(*list(self.image_model.children())[:-1])
 
         # For text embedding
-        self.embedding = nn.EmbeddingBag(50000, 768, sparse=False)
+        # self.embedding = nn.EmbeddingBag(50000, 768, sparse=False)
 
         # text CNN, in_channel=1, out=num_classes=512
         self.text_cnn = textResNet(num_classes=512, dropout=dropout)
@@ -33,20 +33,21 @@ class ALKA(nn.Module):
         image_features = self.image_model(image)
 
         # Text feature extracting
-        # Input B 10 W
+        # Input B 10 W=128
         # Convert to B C=10 H=1 W
+        captions = captions.unsqueeze(2)
 
-        captions_list = []
-        for i in range(captions.size(1)):
-            current_dimension_data = captions[:, i, :]
-            embedded = self.embedding(current_dimension_data)
-            embedded = embedded.unsqueeze(
-                1)  # to B H=1 W
-            captions_list.append(embedded)
-        # stack to B C=10 H W
-        captions_output = torch.stack(captions_list, dim=1)
+        # captions_list = []
+        # for i in range(captions.size(1)):
+        #     current_dimension_data = captions[:, i, :]
+        #     embedded = self.embedding(current_dimension_data)
+        #     embedded = embedded.unsqueeze(
+        #         1)  # to B H=1 W
+        #     captions_list.append(embedded)
+        # # stack to B C=10 H W
+        # captions_output = torch.stack(captions_list, dim=1)
 
-        text_output = self.text_cnn(captions_output)
+        text_output = self.text_cnn(captions.to(torch.float))
 
         # mixing the dim 1, to B C H W
         # text_pooled = torch.mean(text_output, dim=1)
