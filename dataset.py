@@ -60,16 +60,15 @@ class AlkaDataset(Dataset):
         class_label = torch.tensor(class_label)
 
         descriptions = self.descriptions[basename]
-        tokenized_text = [self.text_tokenizer(text, return_tensors='pt', add_special_tokens=True) for text in
-                          descriptions]
+        tokenized_text = [self.text_tokenizer.convert_tokens_to_ids(self.text_tokenizer.tokenize(self.text_tokenizer.convert_tokens_to_string(self.text_tokenizer.tokenize(text)))) for text in descriptions]
 
         # max_len = 128
         # padded_text = [tokens + [0] * (max_len - len(tokens)) for tokens in tokenized_text]
         padded_tokenized_texts = []
         attention_masks = []
-        for token in tokenized_text:
-            input_ids = token['input_ids'][0]
+        for input_ids in tokenized_text:
             padding_size = 128 - len(input_ids)
+            input_ids = torch.tensor(input_ids)
             padded_input_ids = F.pad(input_ids, (0, padding_size), value=self.text_tokenizer.pad_token_id)
             attention_mask = torch.ones_like(padded_input_ids)
             attention_mask[padding_size:] = 0  # 将填充的部分置零
