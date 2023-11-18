@@ -60,26 +60,24 @@ class AlkaDataset(Dataset):
         class_label = torch.tensor(class_label)
 
         descriptions = self.descriptions[basename]
+        tokenized_text = [self.text_tokenizer.convert_tokens_to_ids(self.text_tokenizer.tokenize(self.text_tokenizer.convert_tokens_to_string(self.text_tokenizer.tokenize(text)))) for text in descriptions]
 
-        max_len = 128
+        # max_len = 128
         # padded_text = [tokens + [0] * (max_len - len(tokens)) for tokens in tokenized_text]
-        input_ids = []
+        padded_tokenized_texts = []
         attention_masks = []
+        for input_ids in tokenized_text:
+            padding_size = 128 - len(input_ids)
+            input_ids = torch.tensor(input_ids)
+            padded_input_ids = F.pad(input_ids, (0, padding_size), value=self.text_tokenizer.pad_token_id)
+            attention_mask = torch.ones_like(padded_input_ids)
+            attention_mask[padding_size:] = 0  # 将填充的部分置零
 
-        for sent in descriptions:
-            encoded_dict = self.text_tokenizer.encode_plus(
-                sent,
-                add_special_tokens=True,
-                max_length=max_len,
-                pad_to_max_length=True,
-                return_attention_mask=True,
-                return_tensors='pt'
-            )
-            input_ids.append(encoded_dict['input_ids'])
-            attention_masks.append(encoded_dict['attention_mask'])
+            padded_tokenized_texts.append(padded_input_ids)
+            attention_masks.append(attention_mask)
 
-        input_ids = torch.cat(input_ids, dim=0)
-        attention_masks = torch.cat(attention_masks, dim=0)
+        padded_tokenized_texts = torch.stack(padded_tokenized_texts, dim=0)
+        attention_masks = torch.stack(attention_masks, dim=0)
 
         vocab_size = self.text_tokenizer.vocab_size
 
@@ -93,7 +91,7 @@ class AlkaDataset(Dataset):
         if self.transform:
             image = self.transform(image)
 
-        return image, input_ids, attention_masks, class_label
+        return image, padded_tokenized_texts, attention_masks, class_label
 
 # dataset = MultimodalDataset(root_dir='../dataset/102flowers')
 # img, cap, clz = dataset[0]
