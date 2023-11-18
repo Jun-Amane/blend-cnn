@@ -8,7 +8,8 @@ from transformers import BertModel, BertTokenizer
 
 
 class AlkaDataset(Dataset):
-    def __init__(self, root_dir, local_bert=False, local_bert_path='../bert-base-uncased', transform=None):
+    # TODO: local_bert_path here and in ALKA
+    def __init__(self, root_dir, local_bert=False, local_bert_path='', transform=None):
         self.root_dir = root_dir
         self.transform = transform
         self.image_folder = os.path.join(root_dir, '102flowers')
@@ -24,8 +25,8 @@ class AlkaDataset(Dataset):
             self.text_model = BertModel.from_pretrained(local_bert_path)
             self.text_tokenizer = BertTokenizer.from_pretrained(local_bert_path)
         else:
-            self.text_model = BertModel.from_pretrained("bert-base-uncased")
-            self.text_tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+            self.text_model = BertModel.from_pretrained("bert-medium")
+            self.text_tokenizer = BertTokenizer.from_pretrained("bert-medium")
 
         self.vocab_size = self.text_tokenizer.vocab_size
 
