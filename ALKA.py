@@ -2,7 +2,8 @@ import torch
 import torch.nn as nn
 import torchvision
 from text_CNN import textResNet
-from alka_LSTM import AlkaLSTM
+# from alka_LSTM import AlkaLSTM
+from transformers import BertModel, BertTokenizer
 
 
 class ALKA(nn.Module):
@@ -14,23 +15,26 @@ class ALKA(nn.Module):
         self.image_model = nn.Sequential(*list(self.image_model.children())[:-1])
 
         # For text embedding
-        #self.embedding = nn.EmbeddingBag(50000, 768, sparse=False)
+        # self.embedding = nn.EmbeddingBag(50000, 768, sparse=False)
 
         # text CNN, in_channel=1, out=num_classes=512
         # self.text_cnn = textResNet(num_classes=512, dropout=dropout)
 
-        self.text_lstm = AlkaLSTM(embedding_dim=768, hidden_dim=256, tagset_size=512)
+        # self.text_lstm = AlkaLSTM(embedding_dim=768, hidden_dim=256, tagset_size=512)
+
+        self.bert = BertModel.from_pretrained("bert-base-uncased")
+        self.linear_projection = nn.Linear(768, 512)
 
         # MM fusion
         self.fc_fusion = nn.Sequential(
             nn.Dropout(p=dropout),
-            nn.Linear(512 + 512, 256),
+            nn.Linear(512 + 768, 256),
             nn.ReLU(),
             nn.Dropout(p=dropout),
             nn.Linear(256, num_classes)
         )
 
-    def forward(self, image, captions):
+    def forward(self, image, captions, masks):
         # Image feature extracting
         image_features = self.image_model(image)
         image_features = image_features.view(image_features.size(0), -1)
@@ -39,25 +43,35 @@ class ALKA(nn.Module):
         # Text feature extracting
         # Input B 10 128(padding) 768
 
-        captions_list = []
-        for i in range(captions.size(1)):
-            current_dimension_data = captions[:, i, :]
-            lstm_out = self.text_lstm(current_dimension_data)
-            # embedded = self.embedding(current_dimension_data)
-            # embedded = embedded.unsqueeze(
-            #     1)  # to B H=1 W
-            captions_list.append(lstm_out)
-        # stack to B C=10 H W
-        text_output = torch.stack(captions_list, dim=1)
+        # captions_list = []
+        # for i in range(captions.size(1)):
+        #     current_dimension_data = captions[:, i, :]
+        #     lstm_out = self.text_lstm(current_dimension_data)
+        #     # embedded = self.embedding(current_dimension_data)
+        #     # embedded = embedded.unsqueeze(
+        #     #     1)  # to B H=1 W
+        #     captions_list.append(lstm_out)
+        # # stack to B C=10 H W
+        # text_output = torch.stack(captions_list, dim=1)
 
         # text_output = self.text_cnn(captions_output)
 
+        captions_list = []
+        for i in range(captions.size(1)):
+            current_dimension_data = captions[:, i, :]
+            current_dimension_mask = captions[:, i, :]
+            bert_output = self.bert(input_ids=current_dimension_data, attention_mask=current_dimension_mask)
+            bert_output = bert_output.last_hidden_state
+            captions_list.append(bert_output)
+        text_output = torch.stack(captions_list, dim=1)
+
         # mixing the dim 1, to B C H W
-        text_pooled = torch.mean(text_output, dim=1)
+        text_pooled = torch.mean(text_output[:, :, 0, :], dim=1)
+        text_features = self.linear_projection(text_pooled)
         # text_pooled = text_pooled.unsqueeze(0)
 
         # MM fusion
-        fusion_input = torch.cat((image_features, text_pooled), dim=1)
+        fusion_input = torch.cat((image_features, text_features), dim=1)
         output = self.fc_fusion(fusion_input)
 
         return output
@@ -66,4 +80,3 @@ class ALKA(nn.Module):
 num_classes = 102
 model = ALKA(num_classes=num_classes)
 print(model)
-

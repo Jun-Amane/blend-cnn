@@ -78,9 +78,9 @@ class AlkaDataset(Dataset):
         padded_tokenized_texts = torch.stack(padded_tokenized_texts, dim=0)
         attention_masks = torch.stack(attention_masks, dim=0)
 
-        with torch.no_grad():
-            bert_out = self.text_model(input_ids=padded_tokenized_texts, attention_mask=attention_masks)
-        text_out = bert_out.last_hidden_state
+        # with torch.no_grad():
+        #     bert_out = self.text_model(input_ids=padded_tokenized_texts, attention_mask=attention_masks)
+        # text_out = bert_out.last_hidden_state
 
         # captions_tensor = torch.tensor(text_out)
 
@@ -88,7 +88,7 @@ class AlkaDataset(Dataset):
         if self.transform:
             image = self.transform(image)
 
-        return image, text_out, class_label
+        return image, padded_tokenized_texts, attention_masks, class_label
 
 # dataset = MultimodalDataset(root_dir='../dataset/102flowers')
 # img, cap, clz = dataset[0]

@@ -80,11 +80,12 @@ for i in range(epoch):
 
     # Training
     net_obj.train()
-    for images, captions, labels in train_loader:
+    for images, captions, masks, labels in train_loader:
         images = images.to(training_device)
         captions = captions.to(training_device)
+        masks = masks.to(training_device)
         labels = labels.to(training_device)
-        outputs = net_obj(images, captions)
+        outputs = net_obj(images, captions, masks)
         loss = loss_fn(outputs, labels)
 
         # Optimizing
