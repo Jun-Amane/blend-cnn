@@ -107,11 +107,12 @@ for i in range(epoch):
     net_obj.eval()
     print(f"**************** Validating Epoch: {i + 1} ****************")
     with torch.no_grad():
-        for images, captions, labels in val_loader:
+        for images, captions, masks, labels in val_loader:
             images = images.to(training_device)
             captions = captions.to(training_device)
+            masks = masks.to(training_device)
             labels = labels.to(training_device)
-            outputs = net_obj(images, captions)
+            outputs = net_obj(images, captions, masks)
             loss = loss_fn(outputs, labels)
             total_step_loss += loss.item()
             steps_per_epoch += 1
