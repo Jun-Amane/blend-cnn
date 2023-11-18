@@ -18,7 +18,7 @@ class AlkaLSTM(nn.Module):
         # embedded_tokens: (batch_size, 10, 128, embedding_dim)
         # attention_mask.unsqueeze(3): (batch_size, 10, 128, 1)
         # product: (batch_size, 10, 128)
-        embedded_tokens = embedded_tokens * attention_mask.unsqueeze(3)
+        # embedded_tokens = embedded_tokens * attention_mask.unsqueeze(3)
 
         # mean: (batchsize, 128, embedding_dim)
         embedded_tokens = torch.mean(embedded_tokens, dim=1)  # also try torch.sum()
