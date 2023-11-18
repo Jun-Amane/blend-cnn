@@ -3,7 +3,6 @@ from PIL import Image
 from torch.utils.data import Dataset
 import torch
 import torch.nn.functional as F
-import re
 
 
 class AlkaDataset(Dataset):
@@ -34,7 +33,6 @@ class AlkaDataset(Dataset):
                 with open(cap_path, 'r', encoding='utf-8') as file:
                     lines = file.readlines()
                     cur = [line.strip() for line in lines]
-                    cur = [re.sub(r'[^\w\s]', '', text) for text in cur]
                     descriptions[basename] = cur
                     class_hash_table[basename] = self.classes[i]
                     for iw in cur:
