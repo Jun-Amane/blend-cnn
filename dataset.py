@@ -27,6 +27,8 @@ class AlkaDataset(Dataset):
             self.text_model = BertModel.from_pretrained("bert-base-uncased")
             self.text_tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 
+        self.vocab_size = self.text_tokenizer.vocab_size
+
     def load_descriptions(self):
         descriptions = {}
         class_hash_table = {}
@@ -77,6 +79,8 @@ class AlkaDataset(Dataset):
 
         padded_tokenized_texts = torch.stack(padded_tokenized_texts, dim=0)
         attention_masks = torch.stack(attention_masks, dim=0)
+
+        vocab_size = self.text_tokenizer.vocab_size
 
         # with torch.no_grad():
         #     bert_out = self.text_model(input_ids=padded_tokenized_texts, attention_mask=attention_masks)

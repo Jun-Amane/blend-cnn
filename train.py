@@ -63,7 +63,7 @@ val_loader = DataLoader(dataset=val_set, batch_size=batch_size, shuffle=False)
 # Setting up the NN
 # TODO: num_classes
 num_classes = 102
-net_obj = ALKA(num_classes=num_classes, dropout=wandb.config.dropout).to(training_device)
+net_obj = ALKA(num_classes=num_classes, dropout=wandb.config.dropout, vocab_size=alka_set.vocab_size).to(training_device)
 
 # Loss function & Optimisation
 loss_fn = nn.CrossEntropyLoss()
