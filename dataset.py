@@ -25,8 +25,8 @@ class AlkaDataset(Dataset):
             self.text_model = BertModel.from_pretrained(local_bert_path)
             self.text_tokenizer = BertTokenizer.from_pretrained(local_bert_path)
         else:
-            self.text_model = BertModel.from_pretrained("bert-medium")
-            self.text_tokenizer = BertTokenizer.from_pretrained("bert-medium")
+            self.text_model = BertModel.from_pretrained("prajjwal1/bert-tiny")
+            self.text_tokenizer = BertTokenizer.from_pretrained("prajjwal1/bert-tiny")
 
         self.vocab_size = self.text_tokenizer.vocab_size
 
@@ -72,7 +72,7 @@ class AlkaDataset(Dataset):
                 sent,
                 add_special_tokens=True,
                 max_length=max_len,
-                pad_to_max_length=True,
+                padding='max_length',
                 return_attention_mask=True,
                 return_tensors='pt'
             )
