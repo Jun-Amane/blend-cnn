@@ -22,12 +22,12 @@ class ALKA(nn.Module):
         # self.text_lstm = AlkaLSTM(hidden_dim=256, tagset_size=512, vocab_size=vocab_size)
 
         # self.bert = BertModel.from_pretrained("bert-base-uncased")
-        self.linear_projection = nn.Linear(768, 512)
+        # self.linear_projection = nn.Linear(768, 512)
 
         # MM fusion
         self.fc_fusion = nn.Sequential(
             nn.Dropout(p=dropout),
-            nn.Linear(512 + 512, 256),
+            nn.Linear(512 + 300, 256),
             nn.ReLU(),
             nn.Dropout(p=dropout),
             nn.Linear(256, num_classes)
@@ -37,7 +37,7 @@ class ALKA(nn.Module):
         # Image feature extracting
         image_features = self.image_model(image)
         image_features = image_features.view(image_features.size(0), -1)
-        image_features = torch.nn.functional.log_softmax(image_features, dim=1)
+        # image_features = torch.nn.functional.log_softmax(image_features, dim=1)
 
         # Text feature extracting
         # Input B 10 128(padding) 768

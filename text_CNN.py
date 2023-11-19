@@ -90,6 +90,6 @@ class AlkaTextCNN(nn.Module):
                          dim=1)
 
         # Compute logits. Output shape: (b, n_classes)
-        logits = self.fc(self.dropout(x_fc))
+        # logits = self.fc(self.dropout(x_fc))
 
-        return logits
+        return x_fc

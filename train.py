@@ -6,6 +6,8 @@ from torch.utils.data import DataLoader, random_split
 # from torch.utils.tensorboard import SummaryWriter
 import wandb
 import pprint
+from tqdm import notebook
+import numpy as np
 
 from ALKA import ALKA
 from dataset import AlkaDataset
@@ -31,9 +33,6 @@ wandb.init(
         "epochs": 80,
     })
 
-from tqdm import notebook
-import numpy as np
-
 
 def load_pretrained_vectors(word2idx, fname):
     """Load pretrained vectors and create embedding layers.
@@ -51,7 +50,7 @@ def load_pretrained_vectors(word2idx, fname):
     fin = open(fname, 'r', encoding='utf-8', newline='\n', errors='ignore')
     n, d = map(int, fin.readline().split())
 
-    # Initilize random embeddings
+    # Initialize random embeddings
     embeddings = np.random.uniform(-0.25, 0.25, (len(word2idx), d))
     embeddings[word2idx['<PAD>']] = np.zeros((d,))
 
