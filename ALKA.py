@@ -19,7 +19,7 @@ class ALKA(nn.Module):
 
         # text CNN, in_channel=1, out=num_classes=512
         # self.text_cnn = textResNet(num_classes=512, dropout=dropout)
-        self.bert = BertModel.from_pretrained("bert-medium")
+        self.bert = BertModel.from_pretrained("bert-base-uncased")
 
         # self.text_lstm = AlkaLSTM(hidden_dim=256, tagset_size=512, vocab_size=vocab_size)
 
