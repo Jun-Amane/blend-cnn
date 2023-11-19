@@ -41,7 +41,7 @@ class ALKA(nn.Module):
         img_attn = self.attn_fusion(image_features)
 
         # MM fusion
-        fusion_input = torch.cat((img_attn, text_attn), dim=1)
+        fusion_input = torch.cat((img_attn.squeeze(), text_attn.squeeze()), dim=1)
         output = self.fc_fusion(fusion_input)
 
         return output
