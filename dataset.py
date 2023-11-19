@@ -93,7 +93,7 @@ class AlkaDataset(Dataset):
         if self.transform:
             image = self.transform(image)
 
-        return input_ids, class_label
+        return image, input_ids, attention_masks, class_label
 
 # dataset = MultimodalDataset(root_dir='../dataset/102flowers')
 # img, cap, clz = dataset[0]
