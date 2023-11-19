@@ -31,6 +31,44 @@ wandb.init(
         "epochs": 80,
     })
 
+from tqdm import notebook
+import numpy as np
+
+
+def load_pretrained_vectors(word2idx, fname):
+    """Load pretrained vectors and create embedding layers.
+
+    Args:
+        word2idx (Dict): Vocabulary built from the corpus
+        fname (str): Path to pretrained vector file
+
+    Returns:
+        embeddings (np.array): Embedding matrix with shape (N, d) where N is
+            the size of word2idx and d is embedding dimension
+    """
+
+    print("Loading pretrained vectors...")
+    fin = open(fname, 'r', encoding='utf-8', newline='\n', errors='ignore')
+    n, d = map(int, fin.readline().split())
+
+    # Initilize random embeddings
+    embeddings = np.random.uniform(-0.25, 0.25, (len(word2idx), d))
+    embeddings[word2idx['<PAD>']] = np.zeros((d,))
+
+    # Load pretrained vectors
+    count = 0
+    for line in notebook.tqdm(fin):
+        tokens = line.rstrip().split(' ')
+        word = tokens[0]
+        if word in word2idx:
+            count += 1
+            embeddings[word2idx[word]] = np.array(tokens[1:], dtype=np.float32)
+
+    print(f"There are {count} / {len(word2idx)} pretrained vectors found.")
+
+    return embeddings
+
+
 # Preparing the transforms
 # TODO: transforms
 data_tf = torchvision.transforms.Compose([
@@ -62,8 +100,11 @@ val_loader = DataLoader(dataset=val_set, batch_size=batch_size, shuffle=False)
 
 # Setting up the NN
 # TODO: num_classes
+embeddings = load_pretrained_vectors(alka_set.word2idx, "../data/crawl-300d-2M.vec")
+embeddings = torch.tensor(embeddings)
 num_classes = 102
-net_obj = ALKA(num_classes=num_classes, dropout=wandb.config.dropout).to(training_device)
+net_obj = ALKA(num_classes=num_classes, dropout=wandb.config.dropout, pretrained_embedding=embeddings).to(training_device)
+
 
 # Loss function & Optimisation
 loss_fn = nn.CrossEntropyLoss()
@@ -80,12 +121,11 @@ for i in range(epoch):
 
     # Training
     net_obj.train()
-    for images, captions, masks, labels in train_loader:
+    for images, captions, labels in train_loader:
         images = images.to(training_device)
         captions = captions.to(training_device)
-        masks = masks.to(training_device)
         labels = labels.to(training_device)
-        outputs = net_obj(images, captions, masks)
+        outputs = net_obj(images, captions)
         loss = loss_fn(outputs, labels)
 
         # Optimizing
@@ -107,12 +147,11 @@ for i in range(epoch):
     net_obj.eval()
     print(f"**************** Validating Epoch: {i + 1} ****************")
     with torch.no_grad():
-        for images, captions, masks, labels in val_loader:
+        for images, captions, labels in val_loader:
             images = images.to(training_device)
             captions = captions.to(training_device)
-            masks = masks.to(training_device)
             labels = labels.to(training_device)
-            outputs = net_obj(images, captions, masks)
+            outputs = net_obj(images, captions)
             loss = loss_fn(outputs, labels)
             total_step_loss += loss.item()
             steps_per_epoch += 1

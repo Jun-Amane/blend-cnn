@@ -1,10 +1,10 @@
 import os
 from PIL import Image
-from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset
 import torch
 import torch.nn.functional as F
-from transformers import BertModel, BertTokenizer
+from nltk.tokenize import word_tokenize
+from collections import defaultdict
 
 
 class AlkaDataset(Dataset):
@@ -17,33 +17,53 @@ class AlkaDataset(Dataset):
         self.image_files = [f for f in os.listdir(self.image_folder) if f.endswith('.jpg')]
         self.classes = os.listdir(self.text_folder)
 
-        self.descriptions, self.class_hash_table, self.class_list = self.load_descriptions()
+        self.tokenized_descriptions, self.class_hash_table, self.class_list, self.word2idx = self.load_descriptions()
 
-        # BERT out=768
-        if local_bert:
-            self.text_model = BertModel.from_pretrained(local_bert_path)
-            self.text_tokenizer = BertTokenizer.from_pretrained(local_bert_path)
-        else:
-            self.text_model = BertModel.from_pretrained("bert-base-uncased")
-            self.text_tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-
-        self.vocab_size = self.text_tokenizer.vocab_size
 
     def load_descriptions(self):
         descriptions = {}
         class_hash_table = {}
         class_list = []
+
+        max_len = 0
+        tokenized_descriptions = {}
+        tokenized_sentences = {}
+        word2idx = {'<PAD>': 0, '<UNK>': 1}
+        idx = 2
+
         for i in range(len(self.classes)):
             for cap_name in os.listdir(os.path.join(self.text_folder, self.classes[i])):
                 basename = os.path.splitext(cap_name)[0]
                 cap_path = os.path.join(self.text_folder, self.classes[i], cap_name)
                 with open(cap_path, 'r', encoding='utf-8') as file:
                     lines = file.readlines()
-                    descriptions[basename] = [line.strip() for line in lines]
+                    sentences = ""
+                    for line in lines:
+                        sentences += " " + line.strip()
+                    descriptions[basename] = sentences
                     class_hash_table[basename] = self.classes[i]
+
+                    tokenized_sent = word_tokenize(sentences)
+                    tokenized_sentences[basename] = tokenized_sent
+                    for token in tokenized_sent:
+                        if token not in word2idx:
+                            word2idx[token] = idx
+                            idx += 1
+
+                    max_len = max(max_len, len(tokenized_sent))
             class_list.append(self.classes[i])
 
-        return descriptions, class_hash_table, class_list
+        for i in range(len(self.classes)):
+            for cap_name in os.listdir(os.path.join(self.text_folder, self.classes[i])):
+                basename = os.path.splitext(cap_name)[0]
+                tokenized_sent = tokenized_sentences[basename]
+                tokenized_sent += ['<PAD>'] * (max_len - len(tokenized_sent))
+
+                input_id = [word2idx.get(token) for token in tokenized_sent]
+                tokenized_descriptions[basename] = torch.tensor(input_id)
+        print(max_len)
+
+        return tokenized_descriptions, class_hash_table, class_list, word2idx
 
     def __len__(self):
         return len(self.image_files)
@@ -59,29 +79,9 @@ class AlkaDataset(Dataset):
         class_label = class_to_index[class_name]
         class_label = torch.tensor(class_label)
 
-        descriptions = self.descriptions[basename]
+        descriptions = self.tokenized_descriptions[basename]
 
-        max_len = 128
-        # padded_text = [tokens + [0] * (max_len - len(tokens)) for tokens in tokenized_text]
-        input_ids = []
-        attention_masks = []
 
-        for sent in descriptions:
-            encoded_dict = self.text_tokenizer.encode_plus(
-                sent,
-                add_special_tokens=True,
-                max_length=max_len,
-                pad_to_max_length=True,
-                return_attention_mask=True,
-                return_tensors='pt'
-            )
-            input_ids.append(encoded_dict['input_ids'])
-            attention_masks.append(encoded_dict['attention_mask'])
-
-        input_ids = torch.cat(input_ids, dim=0)
-        attention_masks = torch.cat(attention_masks, dim=0)
-
-        vocab_size = self.text_tokenizer.vocab_size
 
         # with torch.no_grad():
         #     bert_out = self.text_model(input_ids=padded_tokenized_texts, attention_mask=attention_masks)
@@ -93,7 +93,7 @@ class AlkaDataset(Dataset):
         if self.transform:
             image = self.transform(image)
 
-        return image, input_ids, attention_masks, class_label
+        return image, descriptions, class_label
 
 # dataset = MultimodalDataset(root_dir='../dataset/102flowers')
 # img, cap, clz = dataset[0]
