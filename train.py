@@ -24,10 +24,11 @@ wandb.init(
     project="alka",
     # Track hyperparameters and run metadata
     config={
-        "model": "alka-master",
+        "model": "alka-exp-attn",
         "learning_rate": 0.001,
         "weight_decay": 0.0001,
         "dropout": 0.5,
+        "heads": 8,
         "batch_size": 128,
         "dataset": "AlkaSet",
         "epochs": 80,
