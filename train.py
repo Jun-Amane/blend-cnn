@@ -6,6 +6,8 @@ from torch.utils.data import DataLoader, random_split
 # from torch.utils.tensorboard import SummaryWriter
 import wandb
 import pprint
+from tqdm import notebook
+import numpy as np
 
 from ALKA import ALKA
 from dataset import AlkaDataset
@@ -30,6 +32,48 @@ wandb.init(
         "dataset": "AlkaSet",
         "epochs": 80,
     })
+
+
+def load_pretrained_vectors(word2idx, fname):
+    """Load pretrained vectors and create embedding layers.
+
+    Args:
+        word2idx (Dict): Vocabulary built from the corpus
+        fname (str): Path to pretrained vector file
+
+    Returns:
+        embeddings (np.array): Embedding matrix with shape (N, d) where N is
+            the size of word2idx and d is embedding dimension
+    """
+
+    print("Loading pretrained vectors...")
+    fin = open(fname, 'r', encoding='utf-8', newline='\n', errors='ignore')
+    n, d = map(int, fin.readline().split())
+
+    # Initialize random embeddings
+    embeddings = np.random.uniform(-0.25, 0.25, (len(word2idx), d))
+    embeddings[word2idx['<PAD>']] = np.zeros((d,))
+
+    # Load pretrained vectors
+    count = 0
+    for line in notebook.tqdm(fin):
+        tokens = line.rstrip().split(' ')
+        word = tokens[0]
+        if word in word2idx:
+            count += 1
+            embeddings[word2idx[word]] = np.array(tokens[1:], dtype=np.float32)
+
+    print(f"There are {count} / {len(word2idx)} pretrained vectors found.")
+
+    return embeddings
+
+
+def topk_accuracy(output, target, k=1):
+    _, predicted_topk = outputs.topk(k, dim=1)
+    acc = predicted_topk.eq(labels.view(-1, 1)).sum().item()
+
+    return acc
+
 
 # Preparing the transforms
 # TODO: transforms
@@ -62,8 +106,11 @@ val_loader = DataLoader(dataset=val_set, batch_size=batch_size, shuffle=False)
 
 # Setting up the NN
 # TODO: num_classes
+embeddings = load_pretrained_vectors(alka_set.word2idx, "../data/crawl-300d-2M.vec")
+embeddings = torch.tensor(embeddings)
 num_classes = 102
-net_obj = ALKA(num_classes=num_classes, dropout=wandb.config.dropout).to(training_device)
+net_obj = ALKA(num_classes=num_classes, dropout=wandb.config.dropout, pretrained_embedding=embeddings).to(training_device)
+
 
 # Loss function & Optimisation
 loss_fn = nn.CrossEntropyLoss()
@@ -102,6 +149,7 @@ for i in range(epoch):
     # Validating
     total_step_loss = 0
     total_accuracy = 0
+    total_top5_accuarcy = 0
     steps_per_epoch = 0
     net_obj.eval()
     print(f"**************** Validating Epoch: {i + 1} ****************")
@@ -115,15 +163,17 @@ for i in range(epoch):
             total_step_loss += loss.item()
             steps_per_epoch += 1
 
-            step_accuracy = (outputs.argmax(1) == labels).sum()
-            total_accuracy += step_accuracy
+            total_accuracy += topk_accuracy(outputs, labels)
+            total_top5_accuarcy += topk_accuracy(outputs, labels, k=5)
 
         total_val_step += 1
         print(f"Total Loss on Dataset: {total_step_loss / steps_per_epoch}")
-        print(f"Total Accuracy on Dataset: {total_accuracy / val_set_len}")
+        print(f"Top-1 Accuracy on Dataset: {total_accuracy / val_set_len}")
+        print(f"Top-5 Accuracy on Dataset: {total_top5_accuarcy / val_set_len}")
         # writer.add_scalar("val_loss", total_step_loss, total_val_step)
         # writer.add_scalar("val_acc", total_accuracy / val_set_len, total_val_step)
-        wandb.log({"val_acc": total_accuracy / val_set_len, "val_loss": total_step_loss / steps_per_epoch})
+        wandb.log({"acc@1": total_accuracy / val_set_len, "acc@5": total_top5_accuarcy / val_set_len,
+                   "val_loss": total_step_loss / steps_per_epoch})
 
     # torch.save(net_obj.state_dict(), f"Saved_{i}.pth")
     # print("Saved.")
