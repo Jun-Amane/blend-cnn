@@ -81,15 +81,6 @@ class AlkaDataset(Dataset):
 
         descriptions = self.tokenized_descriptions[basename]
 
-
-
-        # with torch.no_grad():
-        #     bert_out = self.text_model(input_ids=padded_tokenized_texts, attention_mask=attention_masks)
-        # text_out = bert_out.last_hidden_state
-
-        # captions_tensor = torch.tensor(text_out)
-
-        # 数据预处理
         if self.transform:
             image = self.transform(image)
 

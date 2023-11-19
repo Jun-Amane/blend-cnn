@@ -12,12 +12,10 @@ class AlkaTextCNN(nn.Module):
                  freeze_embedding=False,
                  vocab_size=None,
                  embed_dim=300,
-                 filter_sizes=[3, 4, 5],
-                 num_filters=[100, 100, 100],
-                 num_classes=512,
-                 dropout=0.5):
+                 filter_sizes=None,
+                 num_filters=None):
         """
-        The constructor for CNN_NLP class.
+        The constructor for AlkaTextCNN class.
 
         Args:
             pretrained_embedding (torch.Tensor): Pretrained embeddings with
@@ -36,6 +34,11 @@ class AlkaTextCNN(nn.Module):
         """
 
         super(AlkaTextCNN, self).__init__()
+        if num_filters is None:
+            num_filters = [128, 128, 128, 128]
+        if filter_sizes is None:
+            filter_sizes = [3, 4, 5, 6]
+
         # Embedding layer
         if pretrained_embedding is not None:
             self.vocab_size, self.embed_dim = pretrained_embedding.shape
@@ -54,9 +57,7 @@ class AlkaTextCNN(nn.Module):
                       kernel_size=filter_sizes[i])
             for i in range(len(filter_sizes))
         ])
-        # Fully-connected layer and Dropout
-        self.fc = nn.Linear(np.sum(num_filters), num_classes)
-        self.dropout = nn.Dropout(p=dropout)
+
 
     def forward(self, input_ids):
         """Perform a forward pass through the network.
