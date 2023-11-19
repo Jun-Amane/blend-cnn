@@ -57,13 +57,13 @@ print(f"Validation Data Length: {val_set_len}")
 
 # Preparing the DataLoader
 batch_size = wandb.config.batch_size
-train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True)
-val_loader = DataLoader(dataset=val_set, batch_size=batch_size, shuffle=False)
+train_loader = DataLoader(dataset=train_set, batch_size=128, shuffle=True)
+val_loader = DataLoader(dataset=val_set, batch_size=128, shuffle=False)
 
 # Setting up the NN
 # TODO: num_classes
 num_classes = 102
-net_obj = ALKA(num_classes=num_classes, dropout=wandb.config.dropout).to(training_device)
+net_obj = ALKA(num_classes=num_classes, dropout=wandb.config.dropout, vocab_size=alka_set.vocab_size).to(training_device)
 
 # Loss function & Optimisation
 loss_fn = nn.CrossEntropyLoss()
@@ -80,12 +80,10 @@ for i in range(epoch):
 
     # Training
     net_obj.train()
-    for images, captions, masks, labels in train_loader:
-        images = images.to(training_device)
+    for captions, labels in train_loader:
         captions = captions.to(training_device)
-        masks = masks.to(training_device)
         labels = labels.to(training_device)
-        outputs = net_obj(images, captions, masks)
+        outputs = net_obj(captions)
         loss = loss_fn(outputs, labels)
 
         # Optimizing
@@ -107,12 +105,10 @@ for i in range(epoch):
     net_obj.eval()
     print(f"**************** Validating Epoch: {i + 1} ****************")
     with torch.no_grad():
-        for images, captions, masks, labels in val_loader:
-            images = images.to(training_device)
+        for captions, labels in val_loader:
             captions = captions.to(training_device)
-            masks = masks.to(training_device)
             labels = labels.to(training_device)
-            outputs = net_obj(images, captions, masks)
+            outputs = net_obj(captions)
             loss = loss_fn(outputs, labels)
             total_step_loss += loss.item()
             steps_per_epoch += 1
