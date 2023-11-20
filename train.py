@@ -12,6 +12,8 @@ import numpy as np
 from ALKA import ALKA
 from dataset import AlkaDataset
 
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+# training_device = "cuda"
 training_device = "cpu"
 
 # writer = SummaryWriter("logs")
@@ -69,8 +71,8 @@ def load_pretrained_vectors(word2idx, fname):
 
 
 def topk_accuracy(output, target, k=1):
-    _, predicted_topk = outputs.topk(k, dim=1)
-    acc = predicted_topk.eq(labels.view(-1, 1)).sum().item()
+    _, predicted_topk = output.topk(k, dim=1)
+    acc = predicted_topk.eq(target.view(-1, 1)).sum().item()
 
     return acc
 
