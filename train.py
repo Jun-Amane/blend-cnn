@@ -12,6 +12,8 @@ import numpy as np
 from ALKA import ALKA
 from dataset import AlkaDataset
 
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+# training_device = "cuda"
 training_device = "cpu"
 
 # writer = SummaryWriter("logs")
@@ -24,11 +26,10 @@ wandb.init(
     project="alka",
     # Track hyperparameters and run metadata
     config={
-        "model": "alka-exp-attn",
+        "model": "alka-master",
         "learning_rate": 0.001,
         "weight_decay": 0.0001,
         "dropout": 0.5,
-        "heads": 8,
         "batch_size": 128,
         "dataset": "AlkaSet",
         "epochs": 80,
@@ -70,8 +71,8 @@ def load_pretrained_vectors(word2idx, fname):
 
 
 def topk_accuracy(output, target, k=1):
-    _, predicted_topk = outputs.topk(k, dim=1)
-    acc = predicted_topk.eq(labels.view(-1, 1)).sum().item()
+    _, predicted_topk = output.topk(k, dim=1)
+    acc = predicted_topk.eq(target.view(-1, 1)).sum().item()
 
     return acc
 
@@ -110,8 +111,8 @@ val_loader = DataLoader(dataset=val_set, batch_size=batch_size, shuffle=False)
 embeddings = load_pretrained_vectors(alka_set.word2idx, "../data/crawl-300d-2M.vec")
 embeddings = torch.tensor(embeddings)
 num_classes = 102
-net_obj = ALKA(num_classes=num_classes, dropout=wandb.config.dropout, pretrained_embedding=embeddings).to(
-    training_device)
+net_obj = ALKA(num_classes=num_classes, dropout=wandb.config.dropout, pretrained_embedding=embeddings).to(training_device)
+
 
 # Loss function & Optimisation
 loss_fn = nn.CrossEntropyLoss()
