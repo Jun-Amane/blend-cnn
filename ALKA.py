@@ -34,11 +34,10 @@ class ALKA(nn.Module):
         image_features = image_features.view(image_features.size(0), -1)
 
         # Text feature extracting
-        # Input B 10 128(padding) 768
         text_features = self.text_cnn(captions)
 
-        text_attn = self.attn_fusion(text_features)
         img_attn = self.attn_fusion(image_features)
+        text_attn = self.attn_fusion(text_features)
 
         # MM fusion
         fusion_input = torch.cat((img_attn.squeeze(), text_attn.squeeze()), dim=1)
