@@ -151,7 +151,7 @@ print(f"Train Data Length: {train_set_len}")
 print(f"Validation Data Length: {val_set_len}")
 
 # Preparing the DataLoader
-batch_size = wandb.config.batch_size
+batch_size = 128
 train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True)
 val_loader = DataLoader(dataset=val_set, batch_size=batch_size, shuffle=False)
 
@@ -170,12 +170,12 @@ def train(config=None):
 
         # Setting up the NN
         # TODO: num_classes
-        net_obj = ALKA(num_classes=num_classes, dropout=wandb.config.dropout, pretrained_embedding=embeddings,
-                       fusion_dim=wandb.config.fusion_dim, filter_sizes=wandb.config.filter_sizes).to(
+        net_obj = ALKA(num_classes=num_classes, dropout=config.dropout, pretrained_embedding=embeddings,
+                       fusion_dim=config.fusion_dim, filter_sizes=config.filter_sizes).to(
             training_device)
         # Loss function & Optimisation
-        optimiser = torch.optim.Adam(net_obj.parameters(), lr=wandb.config.learning_rate,
-                                     weight_decay=wandb.config.weight_decay)
+        optimiser = torch.optim.Adam(net_obj.parameters(), lr=config.learning_rate,
+                                     weight_decay=config.weight_decay)
         # Some training settings
         total_train_step = 0
         total_val_step = 0
@@ -227,4 +227,4 @@ def train(config=None):
                            "val_loss": total_step_loss / steps_per_epoch})
 
 
-wandb.agent(sweep_id, train, count=5)
+wandb.agent(sweep_id, train, count=30)
