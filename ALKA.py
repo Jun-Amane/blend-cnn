@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torchvision
-from text_CNN import AlkaTextCNN
+from text_LSTM import AlkaTextLSTM
 from multihead_attention import MultiHeadAttention
 
 
@@ -13,7 +13,7 @@ class ALKA(nn.Module):
         self.image_model = torchvision.models.resnet18(weights=None)
         self.image_model = nn.Sequential(*list(self.image_model.children())[:-1])
 
-        self.text_cnn = AlkaTextCNN(pretrained_embedding=pretrained_embedding)
+        self.text_lstm = AlkaTextLSTM(pretrained_embedding=pretrained_embedding)
 
         # MM fusion
         self.fc_fusion = nn.Sequential(
@@ -30,8 +30,7 @@ class ALKA(nn.Module):
         image_features = image_features.view(image_features.size(0), -1)
 
         # Text feature extracting
-        # Input B 10 128(padding) 768
-        text_features = self.text_cnn(captions)
+        text_features = self.text_lstm(captions)
 
         # MM fusion
         fusion_input = torch.cat((image_features, text_features), dim=1)

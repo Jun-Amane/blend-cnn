@@ -8,22 +8,26 @@ from collections import defaultdict
 
 
 class AlkaDataset(Dataset):
-    def __init__(self, root_dir, local_bert=False, local_bert_path='../bert-base-uncased', transform=None):
+    def __init__(self, root_dir, transform=None):
         self.root_dir = root_dir
         self.transform = transform
         self.image_folder = os.path.join(root_dir, '102flowers')
         self.text_folder = os.path.join(root_dir, 'text')
 
-        self.image_files = [f for f in os.listdir(self.image_folder) if f.endswith('.jpg')]
+        self.image_files = {}
         self.classes = os.listdir(self.text_folder)
 
-        self.tokenized_descriptions, self.class_hash_table, self.class_list, self.word2idx = self.load_descriptions()
+        self.tokenized_descriptions, self.class_hash_table, self.class_list, self.word2idx, self.basename_list = self.load_descriptions()
+
+        for basename in self.basename_list:
+            self.image_files[basename] = Image.open(os.path.join(self.image_folder, basename + '.jpg'))
 
 
     def load_descriptions(self):
         descriptions = {}
         class_hash_table = {}
         class_list = []
+        basename_list = []
 
         max_len = 0
         tokenized_descriptions = {}
@@ -34,6 +38,7 @@ class AlkaDataset(Dataset):
         for i in range(len(self.classes)):
             for cap_name in os.listdir(os.path.join(self.text_folder, self.classes[i])):
                 basename = os.path.splitext(cap_name)[0]
+                basename_list.append(basename)
                 cap_path = os.path.join(self.text_folder, self.classes[i], cap_name)
                 with open(cap_path, 'r', encoding='utf-8') as file:
                     lines = file.readlines()
@@ -63,16 +68,14 @@ class AlkaDataset(Dataset):
                 tokenized_descriptions[basename] = torch.tensor(input_id)
         print(max_len)
 
-        return tokenized_descriptions, class_hash_table, class_list, word2idx
+        return tokenized_descriptions, class_hash_table, class_list, word2idx, basename_list
 
     def __len__(self):
         return len(self.image_files)
 
     def __getitem__(self, idx):
-        image_name = self.image_files[idx]
-        image_path = os.path.join(self.image_folder, image_name)
-        image = Image.open(image_path)
-        basename = os.path.splitext(image_name)[0]
+        basename = self.basename_list[idx]
+        image = self.image_files[basename]
 
         class_to_index = {class_name: i for i, class_name in enumerate(self.class_list)}
         class_name = self.class_hash_table[basename]
