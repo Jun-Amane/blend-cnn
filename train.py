@@ -1,6 +1,7 @@
 import os
 import torch
 import torchvision
+from torchvision.transforms import v2
 import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
 # from torch.utils.tensorboard import SummaryWriter
@@ -12,8 +13,6 @@ import numpy as np
 from ALKA import ALKA
 from dataset import AlkaDataset
 
-# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-# training_device = "cuda"
 training_device = "cpu"
 
 # writer = SummaryWriter("logs")
@@ -26,10 +25,11 @@ wandb.init(
     project="alka",
     # Track hyperparameters and run metadata
     config={
-        "model": "alka-master",
-        "learning_rate": 0.001,
-        "weight_decay": 0.0001,
-        "dropout": 0.5,
+        "model": "alka-exp-attn",
+        "learning_rate": 3e-4,
+        "weight_decay": 1e-4,
+        "dropout": 0.2,
+        "heads": 8,
         "batch_size": 128,
         "dataset": "AlkaSet",
         "epochs": 80,
@@ -71,19 +71,20 @@ def load_pretrained_vectors(word2idx, fname):
 
 
 def topk_accuracy(output, target, k=1):
-    _, predicted_topk = output.topk(k, dim=1)
-    acc = predicted_topk.eq(target.view(-1, 1)).sum().item()
+    _, predicted_topk = outputs.topk(k, dim=1)
+    acc = predicted_topk.eq(labels.view(-1, 1)).sum().item()
 
     return acc
 
 
 # Preparing the transforms
 # TODO: transforms
-data_tf = torchvision.transforms.Compose([
-    torchvision.transforms.Resize((224, 224)),
-    torchvision.transforms.RandomHorizontalFlip(),
-    torchvision.transforms.ToTensor(),
-    torchvision.transforms.Normalize((0.4355, 0.3777, 0.2879), (0.2653, 0.2124, 0.2194))])
+data_tf = v2.Compose([
+    v2.Resize((224, 224)),
+    v2.RandomHorizontalFlip(),
+    v2.ToImage(),
+    v2.ToDtype(torch.float32, scale=True),
+    v2.Normalize((0.4355, 0.3777, 0.2879), (0.2653, 0.2124, 0.2194))])
 
 # Preparing the Dateset
 # TODO: DATASET
@@ -103,15 +104,22 @@ print(f"Validation Data Length: {val_set_len}")
 
 # Preparing the DataLoader
 batch_size = wandb.config.batch_size
-train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True)
-val_loader = DataLoader(dataset=val_set, batch_size=batch_size, shuffle=False)
+train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True, num_workers=4)
+val_loader = DataLoader(dataset=val_set, batch_size=batch_size, shuffle=False, num_workers=4)
 
 # Setting up the NN
 # TODO: num_classes
 embeddings = load_pretrained_vectors(alka_set.word2idx, "../data/crawl-300d-2M.vec")
 embeddings = torch.tensor(embeddings)
 num_classes = 102
-net_obj = ALKA(num_classes=num_classes, dropout=wandb.config.dropout, pretrained_embedding=embeddings).to(training_device)
+net_obj = ALKA(num_classes=num_classes, dropout=wandb.config.dropout, pretrained_embedding=embeddings).to(
+    training_device)
+
+pytorch_total_params = sum(p.numel() for p in net_obj.parameters())
+pytorch_trainable_params = sum(p.numel() for p in net_obj.parameters() if p.requires_grad)
+print(f"TOTAL PARAMS OF ALKA: {pytorch_total_params}")
+print(f"TRAINABLE PARAMS OF ALKA: {pytorch_trainable_params}")
+
 
 
 # Loss function & Optimisation
