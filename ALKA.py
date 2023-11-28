@@ -16,18 +16,16 @@ class ALKA(nn.Module):
         # text CNN, in_channel=embed_dim=pretrained_embedding.shape, out=512
         self.text_cnn = AlkaTextCNN(pretrained_embedding=pretrained_embedding)
 
-        # multi-head attention, in=out=512
+        # multi-head attention, in=out=512+512
         self.attention = MultiHeadAttention(1024, num_heads)
-        self.layer_norm_1 = nn.LayerNorm([128, 1024])
+        self.layer_norm = nn.LayerNorm(1024)
 
-        # MM fusion, in=512(img)+512(text), out=num_classes=102
-        self.feed_forward = nn.Sequential(
+        # feed forward network
+        self.feed_forward_network = nn.Sequential(
             nn.Dropout(p=dropout),
-            nn.Linear(512 + 512, 256),
-            nn.ReLU(),
-            nn.Dropout(p=dropout),
-            nn.Linear(256, num_classes)
+            nn.Linear(1024, num_classes)
         )
+
 
     def forward(self, image, captions):
         # Image feature extracting
@@ -37,12 +35,13 @@ class ALKA(nn.Module):
         # Text feature extracting
         text_features = self.text_cnn(captions)
 
-        # MM fusion
+        # MM fusion by multi-head attention
         concat_features = torch.cat((image_features, text_features), dim=1)
         attn_out = self.attention(concat_features).squeeze()
-        attn_out = self.layer_norm_1(attn_out + concat_features)
-
-        ffn_out = self.feed_forward(attn_out)
+        # with residual connection
+        attn_out = self.layer_norm(attn_out + concat_features)
+        # FFN
+        ffn_out = self.feed_forward_network(attn_out)
 
         return ffn_out
 
