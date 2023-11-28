@@ -39,7 +39,7 @@ class ALKA(nn.Module):
         # MM fusion
         concat_features = torch.cat((image_features, text_features), dim=1)
         attn = self.attn_fusion(concat_features)
-        output = self.fc_fusion(attn)
+        output = self.fc_fusion(attn.squeeze())
 
         return output
 

@@ -113,6 +113,13 @@ num_classes = 102
 net_obj = ALKA(num_classes=num_classes, dropout=wandb.config.dropout, pretrained_embedding=embeddings).to(
     training_device)
 
+pytorch_total_params = sum(p.numel() for p in net_obj.parameters())
+pytorch_trainable_params = sum(p.numel() for p in net_obj.parameters() if p.requires_grad)
+print(f"TOTAL PARAMS OF ALKA: {pytorch_total_params}")
+print(f"TRAINABLE PARAMS OF ALKA: {pytorch_trainable_params}")
+
+
+
 # Loss function & Optimisation
 loss_fn = nn.CrossEntropyLoss()
 optimiser = torch.optim.Adam(net_obj.parameters(), lr=wandb.config.learning_rate,
