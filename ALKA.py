@@ -17,15 +17,16 @@ class ALKA(nn.Module):
         self.text_cnn = AlkaTextCNN(pretrained_embedding=pretrained_embedding)
 
         # multi-head attention, in=out=512
-        self.attn_fusion = MultiHeadAttention(1024, num_heads)
+        self.attention = MultiHeadAttention(1024, num_heads)
+        self.layer_norm_1 = nn.LayerNorm([128, 1024])
 
         # MM fusion, in=512(img)+512(text), out=num_classes=102
-        self.fc_fusion = nn.Sequential(
+        self.feed_forward = nn.Sequential(
             nn.Dropout(p=dropout),
-            # nn.Linear(512 + 512, 256),
-            # nn.ReLU(),
-            # nn.Dropout(p=dropout),
-            nn.Linear(1024, num_classes)
+            nn.Linear(512 + 512, 256),
+            nn.ReLU(),
+            nn.Dropout(p=dropout),
+            nn.Linear(256, num_classes)
         )
 
     def forward(self, image, captions):
@@ -38,10 +39,12 @@ class ALKA(nn.Module):
 
         # MM fusion
         concat_features = torch.cat((image_features, text_features), dim=1)
-        attn = self.attn_fusion(concat_features)
-        output = self.fc_fusion(attn.squeeze())
+        attn_out = self.attention(concat_features).squeeze()
+        attn_out = self.layer_norm_1(attn_out + concat_features)
 
-        return output
+        ffn_out = self.feed_forward(attn_out)
+
+        return ffn_out
 
 
 # num_classes = 102
