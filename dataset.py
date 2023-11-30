@@ -8,9 +8,10 @@ from collections import defaultdict
 
 
 class AlkaDataset(Dataset):
-    def __init__(self, root_dir, transform=None):
+    def __init__(self, root_dir, transform=None, load_to_ram=True):
         self.root_dir = root_dir
         self.transform = transform
+        self.load_to_ram = load_to_ram
         self.image_folder = os.path.join(root_dir, '102flowers')
         self.text_folder = os.path.join(root_dir, 'text')
 
@@ -19,10 +20,14 @@ class AlkaDataset(Dataset):
 
         self.tokenized_descriptions, self.class_hash_table, self.class_list, self.word2idx, self.basename_list = self.load_descriptions()
         for basename in self.basename_list:
-            cur_img = Image.open(os.path.join(self.image_folder, basename + ".jpg"))
-            if self.transform:
-                cur_img = self.transform(cur_img)
-            self.image_files[basename] = cur_img
+            if self.load_to_ram:
+                cur_img = Image.open(os.path.join(self.image_folder, basename + ".jpg"))
+                if self.transform:
+                    cur_img = self.transform(cur_img)
+                self.image_files[basename] = cur_img
+            else:
+                cur_img = os.path.join(self.image_folder, basename + ".jpg")
+                self.image_files[basename] = cur_img
 
 
     def load_descriptions(self):
@@ -77,7 +82,12 @@ class AlkaDataset(Dataset):
 
     def __getitem__(self, idx):
         basename = self.basename_list[idx]
-        image = self.image_files[basename]
+        if self.load_to_ram:
+            image = self.image_files[basename]
+        else:
+            image = Image.open(self.image_files[basename])
+            if self.transform:
+                image = self.transform(image)
 
         class_to_index = {class_name: i for i, class_name in enumerate(self.class_list)}
         class_name = self.class_hash_table[basename]
