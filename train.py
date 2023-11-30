@@ -124,7 +124,7 @@ print(f"TRAINABLE PARAMS OF ALKA: {pytorch_trainable_params}")
 
 # Loss function & Optimisation
 loss_fn = nn.CrossEntropyLoss()
-optimiser = torch.optim.Adam(net_obj.parameters(), lr=wandb.config.learning_rate,
+optimiser = torch.optim.AdamW(net_obj.parameters(), lr=wandb.config.learning_rate,
                              weight_decay=wandb.config.weight_decay)
 
 # Some training settings
