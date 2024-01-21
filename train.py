@@ -1,7 +1,7 @@
 import os
 import torch
 import torchvision
-from torchvision.transforms import v2
+from torchvision.transforms import v2, InterpolationMode
 import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
 # from torch.utils.tensorboard import SummaryWriter
@@ -25,12 +25,12 @@ wandb.init(
     project="alka",
     # Track hyperparameters and run metadata
     config={
-        "model": "alka-exp-attn",
+        "model": "alka-master",
         "learning_rate": 3e-4,
         "weight_decay": 1e-4,
         "dropout": 0.2,
         "heads": 8,
-        "batch_size": 128,
+        "batch_size": 16,
         "dataset": "AlkaSet",
         "epochs": 80,
     })
@@ -80,7 +80,8 @@ def topk_accuracy(output, target, k=1):
 # Preparing the transforms
 # TODO: transforms
 data_tf = v2.Compose([
-    v2.Resize((224, 224)),
+    v2.Resize((320, 320), interpolation=InterpolationMode.BICUBIC),
+    v2.CenterCrop((320, 320)),
     v2.RandomHorizontalFlip(),
     v2.ToImage(),
     v2.ToDtype(torch.float32, scale=True),
@@ -88,7 +89,7 @@ data_tf = v2.Compose([
 
 # Preparing the Dateset
 # TODO: DATASET
-alka_set = AlkaDataset('../dataset/102flowers', transform=data_tf)
+alka_set = AlkaDataset('../dataset/102flowers', transform=data_tf, load_to_ram=False)
 train_ratio = 0.8
 dataset_size = len(alka_set)
 train_size = int(train_ratio * dataset_size)

@@ -35,7 +35,7 @@ class AlkaTextCNN(nn.Module):
 
         super(AlkaTextCNN, self).__init__()
         if num_filters is None:
-            num_filters = [128, 128, 128, 128]
+            num_filters = [384, 384, 384, 384]
         if filter_sizes is None:
             filter_sizes = [3, 4, 5, 6]
 
