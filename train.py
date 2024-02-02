@@ -117,6 +117,7 @@ optimiser = torch.optim.AdamW(net_obj.parameters(), lr=wandb.config.learning_rat
 # Some training settings
 total_train_step = 0
 total_val_step = 0
+best_acc = 0.0
 epoch = wandb.config.epochs
 
 for i in range(epoch):
@@ -148,7 +149,6 @@ for i in range(epoch):
     total_accuracy = 0
     total_top5_accuarcy = 0
     steps_per_epoch = 0
-    best_acc = 0.0
     net_obj.eval()
     print(f"**************** Validating Epoch: {i + 1} ****************")
     with torch.no_grad():
