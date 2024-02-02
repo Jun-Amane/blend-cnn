@@ -32,7 +32,7 @@ wandb.init(
         "heads": 8,
         "batch_size": 16,
         "dataset": "AlkaSet",
-        "epochs": 80,
+        "epochs": 30,
     })
 
 
@@ -148,6 +148,7 @@ for i in range(epoch):
     total_accuracy = 0
     total_top5_accuarcy = 0
     steps_per_epoch = 0
+    best_acc = 0.0
     net_obj.eval()
     print(f"**************** Validating Epoch: {i + 1} ****************")
     with torch.no_grad():
@@ -171,6 +172,10 @@ for i in range(epoch):
         # writer.add_scalar("val_acc", total_accuracy / val_set_len, total_val_step)
         wandb.log({"acc@1": total_accuracy / val_set_len, "acc@5": total_top5_accuarcy / val_set_len,
                    "val_loss": total_step_loss / steps_per_epoch})
+
+        if (total_accuracy / val_set_len) > best_acc:
+            best_acc = total_accuracy / val_set_len
+            wandb.run.summary["best_acc"] = best_acc
 
     # torch.save(net_obj.state_dict(), f"Saved_{i}.pth")
     # print("Saved.")
