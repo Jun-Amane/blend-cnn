@@ -37,17 +37,6 @@ wandb.init(
 
 
 def load_pretrained_vectors(word2idx, fname):
-    """Load pretrained vectors and create embedding layers.
-
-    Args:
-        word2idx (Dict): Vocabulary built from the corpus
-        fname (str): Path to pretrained vector file
-
-    Returns:
-        embeddings (np.array): Embedding matrix with shape (N, d) where N is
-            the size of word2idx and d is embedding dimension
-    """
-
     print("Loading pretrained vectors...")
     fin = open(fname, 'r', encoding='utf-8', newline='\n', errors='ignore')
     n, d = map(int, fin.readline().split())
@@ -78,7 +67,6 @@ def topk_accuracy(output, target, k=1):
 
 
 # Preparing the transforms
-# TODO: transforms
 data_tf = v2.Compose([
     v2.Resize((320, 320), interpolation=InterpolationMode.BICUBIC),
     v2.CenterCrop((320, 320)),
@@ -88,7 +76,6 @@ data_tf = v2.Compose([
     v2.Normalize((0.4355, 0.3777, 0.2879), (0.2653, 0.2124, 0.2194))])
 
 # Preparing the Dateset
-# TODO: DATASET
 alka_set = AlkaDataset('../dataset/102flowers', transform=data_tf, load_to_ram=False)
 train_ratio = 0.8
 dataset_size = len(alka_set)
@@ -109,7 +96,6 @@ train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True
 val_loader = DataLoader(dataset=val_set, batch_size=batch_size, shuffle=False, num_workers=4)
 
 # Setting up the NN
-# TODO: num_classes
 embeddings = load_pretrained_vectors(alka_set.word2idx, "../data/crawl-300d-2M.vec")
 embeddings = torch.tensor(embeddings)
 num_classes = 102
