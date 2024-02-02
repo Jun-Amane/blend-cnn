@@ -16,6 +16,9 @@ class ALKA(nn.Module):
         # text CNN, in_channel=embed_dim=pretrained_embedding.shape, out=1536
         self.text_cnn = AlkaTextCNN(pretrained_embedding=pretrained_embedding)
 
+        self.image_norm = nn.LayerNorm(1536)
+        self.text_norm = nn.LayerNorm(1536)
+
         # multi-head attention, in=out=1536
         # self.attention = MultiHeadAttention(1536, num_heads)
         self.attention = nn.MultiheadAttention(embed_dim=1536, num_heads=8, batch_first=True)
@@ -36,10 +39,12 @@ class ALKA(nn.Module):
         # Output shape: (b, 1536)
         image_features = self.image_model(image)
         image_features = image_features.view(image_features.size(0), -1)
+        image_features = self.image_norm(image_features)
 
         # Text feature extracting
         # Output shape: (b, 1536)
         text_features = self.text_cnn(captions)
+        text_features = self.text_norm(text_features)
 
         # Stack two features
         # Output shape: (b, 2, 1536)
