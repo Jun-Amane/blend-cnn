@@ -140,7 +140,7 @@ for i in range(epoch):
         total_train_step += 1
 
         # if total_train_step % 100 == 0:
-        print(f"Training Step: {total_train_step}, Loss: {loss.item()}")
+        print(f"Training Epoch: {i+1}, Training Step: {total_train_step}, Loss: {loss.item()}")
         # writer.add_scalar("train_loss", loss.item(), total_train_step)
         wandb.log({"train_loss": loss.item()})
 
