@@ -9,6 +9,7 @@ import wandb
 import pprint
 from tqdm import notebook
 import numpy as np
+import random
 
 from ALKA import ALKA
 from dataset import AlkaDataset
@@ -17,6 +18,20 @@ training_device = "cpu"
 
 # writer = SummaryWriter("logs")
 os.environ["WANDB_MODE"] = "offline"
+
+
+def set_seed(seed: int = 42) -> None:
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    # When running on the CuDNN backend, two further options must be set
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    # Set a fixed value for the hash seed
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    print(f"Random seed set as {seed}")
+
 
 # Wandb configs
 # wandb.login()
@@ -30,7 +45,7 @@ wandb.init(
         "weight_decay": 1e-4,
         "dropout": 0.2,
         "heads": 8,
-        "batch_size": 16,
+        "batch_size": 2,
         "dataset": "AlkaSet",
         "epochs": 30,
     })
@@ -74,6 +89,8 @@ data_tf = v2.Compose([
     v2.ToImage(),
     v2.ToDtype(torch.float32, scale=True),
     v2.Normalize((0.4355, 0.3777, 0.2879), (0.2653, 0.2124, 0.2194))])
+
+set_seed(999)
 
 # Preparing the Dateset
 alka_set = AlkaDataset('../dataset/102flowers', transform=data_tf, load_to_ram=False)
