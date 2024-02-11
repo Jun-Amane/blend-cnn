@@ -5,8 +5,6 @@ import numpy as np
 
 
 class AlkaTextCNN(nn.Module):
-    """An 1D Convolutional Neural Network for Sentence Classification."""
-
     def __init__(self,
                  pretrained_embedding=None,
                  freeze_embedding=False,
@@ -14,28 +12,10 @@ class AlkaTextCNN(nn.Module):
                  embed_dim=300,
                  filter_sizes=None,
                  num_filters=None):
-        """
-        The constructor for AlkaTextCNN class.
-
-        Args:
-            pretrained_embedding (torch.Tensor): Pretrained embeddings with
-                shape (vocab_size, embed_dim)
-            freeze_embedding (bool): Set to False to fine-tune pretraiend
-                vectors. Default: False
-            vocab_size (int): Need to be specified when not pretrained word
-                embeddings are not used.
-            embed_dim (int): Dimension of word vectors. Need to be specified
-                when pretrained word embeddings are not used. Default: 300
-            filter_sizes (List[int]): List of filter sizes. Default: [3, 4, 5]
-            num_filters (List[int]): List of number of filters, has the same
-                length as `filter_sizes`. Default: [100, 100, 100]
-            n_classes (int): Number of classes. Default: 2
-            dropout (float): Dropout rate. Default: 0.5
-        """
 
         super(AlkaTextCNN, self).__init__()
         if num_filters is None:
-            num_filters = [128, 128, 128, 128]
+            num_filters = [384, 384, 384, 384]
         if filter_sizes is None:
             filter_sizes = [3, 4, 5, 6]
 
@@ -60,16 +40,6 @@ class AlkaTextCNN(nn.Module):
 
 
     def forward(self, input_ids):
-        """Perform a forward pass through the network.
-
-        Args:
-            input_ids (torch.Tensor): A tensor of token ids with shape
-                (batch_size, max_sent_length)
-
-        Returns:
-            logits (torch.Tensor): Output logits with shape (batch_size,
-                n_classes)
-        """
 
         # Get embeddings from `input_ids`. Output shape: (b, max_len, embed_dim)
         x_embed = self.embedding(input_ids).float()
@@ -87,10 +57,7 @@ class AlkaTextCNN(nn.Module):
 
         # Concatenate x_pool_list to feed the fully connected layer.
         # Output shape: (b, sum(num_filters))
-        x_fc = torch.cat([x_pool.squeeze(dim=2) for x_pool in x_pool_list],
+        x_hidden = torch.cat([x_pool.squeeze(dim=2) for x_pool in x_pool_list],
                          dim=1)
 
-        # Compute logits. Output shape: (b, n_classes)
-        # logits = self.fc(self.dropout(x_fc))
-
-        return x_fc
+        return x_hidden

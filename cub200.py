@@ -7,26 +7,27 @@ from nltk.tokenize import word_tokenize
 from collections import defaultdict
 
 
-class AlkaDataset(Dataset):
+class CUB200(Dataset):
     def __init__(self, root_dir, transform=None, load_to_ram=True):
         self.root_dir = root_dir
         self.transform = transform
         self.load_to_ram = load_to_ram
-        self.image_folder = os.path.join(root_dir, '102flowers')
-        self.text_folder = os.path.join(root_dir, 'text')
+        self.image_folder = os.path.join(root_dir, 'images')
+        self.text_folder = os.path.join(root_dir, 'text_c10')
 
         self.image_files = {}
         self.classes = os.listdir(self.text_folder)
 
         self.tokenized_descriptions, self.class_hash_table, self.class_list, self.word2idx, self.basename_list = self.load_descriptions()
         for basename in self.basename_list:
+            class_label = self.class_hash_table[basename]
             if self.load_to_ram:
-                cur_img = Image.open(os.path.join(self.image_folder, basename + ".jpg"))
+                cur_img = Image.open(os.path.join(self.image_folder, class_label, basename + ".jpg"))
                 if self.transform:
                     cur_img = self.transform(cur_img)
                 self.image_files[basename] = cur_img
             else:
-                cur_img = os.path.join(self.image_folder, basename + ".jpg")
+                cur_img = os.path.join(self.image_folder, class_label, basename + ".jpg")
                 self.image_files[basename] = cur_img
 
 
@@ -96,9 +97,9 @@ class AlkaDataset(Dataset):
 
         descriptions = self.tokenized_descriptions[basename]
 
-        return image, descriptions, class_label
+        return image, descriptions, class_label, basename
 
-# dataset = MultimodalDataset(root_dir='../dataset/102flowers')
+# dataset = CUB200(root_dir='../dataset/cub200/cub200', load_to_ram=False)
 # img, cap, clz = dataset[0]
 # img, cap1, clz = dataset[1]
 # print(cap.shape)

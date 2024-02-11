@@ -11,7 +11,7 @@ class MultiHeadAttention(nn.Module):
         self.W_q = nn.Linear(input_size, input_size)
         self.W_k = nn.Linear(input_size, input_size)
         self.W_v = nn.Linear(input_size, input_size)
-        self.W_o = nn.Linear(input_size, input_size)
+        # self.W_o = nn.Linear(input_size, input_size)
 
     def forward(self, x):
         # Split the input features into multiple heads
@@ -34,7 +34,7 @@ class MultiHeadAttention(nn.Module):
         attn_output = attn_output.transpose(1, 2).contiguous().view(x.size(0), -1, self.num_heads * self.head_size)
 
         # Final output through linear layer
-        output = self.W_o(attn_output)
+        # output = self.W_o(attn_output)
 
-        return output
+        return attn_output
 
