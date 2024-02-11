@@ -13,6 +13,7 @@ import numpy as np
 import random
 
 from ALKA import ALKA
+from exp import Modified_m_CNN
 from dataset import AlkaDataset
 
 from util import *
@@ -21,10 +22,10 @@ training_device = "cpu"
 
 os.environ["WANDB_MODE"] = "offline"
 
-def build_dataset(batch_size: int):
+def build_dataset(batch_size: int, size=300):
     data_tf = v2.Compose([
         v2.Resize((320, 320), interpolation=InterpolationMode.BICUBIC),
-        v2.CenterCrop((300, 300)),
+        v2.CenterCrop((size, size)),
         v2.RandomHorizontalFlip(),
         v2.RandomVerticalFlip(),
         v2.ToImage(),
@@ -64,6 +65,17 @@ def build_model(word2idx, dropout: float):
 
     return net_obj
 
+def build_m_cnn(word2idx, max_len, dropout: float):
+    embeddings = load_pretrained_vectors(word2idx, "../data/crawl-300d-2M.vec")
+    embeddings = torch.tensor(embeddings)
+    num_classes = 102
+    net_obj = Modified_m_CNN(num_filters=256, filter_sizes=[2,3,4], MAX_SEQUENCE_LENGTH=max_len, embedding_matrix=embeddings, EMBEDDING_DIM=300, DROP_OUT=dropout, DROP_OUT2=dropout).to(
+        training_device)
+
+    pytorch_total_params = sum(p.numel() for p in net_obj.parameters())
+    print(f"TOTAL PARAMS OF modified m-CNN: {pytorch_total_params}")
+
+    return net_obj, pytorch_total_params
 
 def build_criterion():
     loss_fn = nn.CrossEntropyLoss()
@@ -149,8 +161,8 @@ def train():
             "epochs": 30,
         })
 
-    alka_set, train_loader, val_loader = build_dataset(batch_size=wandb.config.batch_size)
-    net_obj = build_model(alka_set.word2idx, wandb.config.dropout)
+    alka_set, train_loader, val_loader = build_dataset(batch_size=wandb.config.batch_size, size=224)
+    net_obj, para = build_m_cnn(alka_set.word2idx, alka_set.max_len, wandb.config.dropout)
     criterion = build_criterion()
     optimiser = build_optimizer(net_obj, wandb.config.learning_rate, wandb.config.weight_decay)
 
@@ -164,6 +176,7 @@ def train():
             wandb.run.summary["best_acc"] = best_acc
 
     print(f"Best Accuracy: {best_acc}")
+    wandb.run.summary["#params"] = para
 
     wandb.finish()
 

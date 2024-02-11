@@ -18,7 +18,7 @@ class AlkaDataset(Dataset):
         self.image_files = {}
         self.classes = os.listdir(self.text_folder)
 
-        self.tokenized_descriptions, self.class_hash_table, self.class_list, self.word2idx, self.basename_list = self.load_descriptions()
+        self.tokenized_descriptions, self.class_hash_table, self.class_list, self.word2idx, self.basename_list, self.max_len = self.load_descriptions()
         for basename in self.basename_list:
             if self.load_to_ram:
                 cur_img = Image.open(os.path.join(self.image_folder, basename + ".jpg"))
@@ -75,7 +75,7 @@ class AlkaDataset(Dataset):
                 tokenized_descriptions[basename] = torch.tensor(input_id)
         print(max_len)
 
-        return tokenized_descriptions, class_hash_table, class_list, word2idx, basename_list
+        return tokenized_descriptions, class_hash_table, class_list, word2idx, basename_list, max_len
 
     def __len__(self):
         return len(self.image_files)
