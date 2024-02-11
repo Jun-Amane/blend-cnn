@@ -6,7 +6,7 @@ from multihead_attention import MultiHeadAttention
 
 
 class ALKA(nn.Module):
-    def __init__(self, num_classes, pretrained_embedding, dropout=0.5, num_heads=8, *args, **kwargs):
+    def __init__(self, num_classes, dropout=0.5, num_heads=8, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # image CNN, in_channel=3, out=1536
@@ -14,7 +14,7 @@ class ALKA(nn.Module):
         self.image_model = nn.Sequential(*list(self.image_model.children())[:-1])
 
         # text CNN, in_channel=embed_dim=pretrained_embedding.shape, out=1536
-        self.text_cnn = AlkaTextCNN(pretrained_embedding=pretrained_embedding)
+        self.text_cnn = AlkaTextCNN()
 
         # multi-head attention, in=out=1536
         # self.attention = MultiHeadAttention(1536, num_heads)
