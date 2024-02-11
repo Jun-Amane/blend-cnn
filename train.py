@@ -24,8 +24,9 @@ os.environ["WANDB_MODE"] = "offline"
 def build_dataset(batch_size: int):
     data_tf = v2.Compose([
         v2.Resize((320, 320), interpolation=InterpolationMode.BICUBIC),
-        v2.CenterCrop((320, 320)),
+        v2.CenterCrop((300, 300)),
         v2.RandomHorizontalFlip(),
+        v2.RandomVerticalFlip(),
         v2.ToImage(),
         v2.ToDtype(torch.float32, scale=True),
         v2.Normalize((0.4355, 0.3777, 0.2879), (0.2653, 0.2124, 0.2194))])
@@ -143,7 +144,7 @@ def train():
             "weight_decay": 1e-4,
             "dropout": 0.2,
             "heads": 8,
-            "batch_size": 2,
+            "batch_size": 16,
             "dataset": "AlkaSet",
             "epochs": 30,
         })
