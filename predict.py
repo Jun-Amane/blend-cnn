@@ -1,121 +1,175 @@
 import os
 import torch
 import torchvision
-from torchvision.transforms import v2
+from torchvision.transforms import v2, InterpolationMode
 import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
 # from torch.utils.tensorboard import SummaryWriter
+import wandb
+import pprint
 from tqdm import notebook
+from tqdm import tqdm
 import numpy as np
+import random
 
 from ALKA import ALKA
 from dataset import AlkaDataset
 
+from util import *
+
 training_device = "cpu"
 
-def load_pretrained_vectors(word2idx, fname):
-    """Load pretrained vectors and create embedding layers.
+os.environ["WANDB_MODE"] = "offline"
 
-    Args:
-        word2idx (Dict): Vocabulary built from the corpus
-        fname (str): Path to pretrained vector file
+def build_dataset(batch_size: int):
+    data_tf = v2.Compose([
+        v2.Resize((320, 320), interpolation=InterpolationMode.BICUBIC),
+        v2.CenterCrop((300, 300)),
+        v2.RandomHorizontalFlip(),
+        v2.ToImage(),
+        v2.ToDtype(torch.float32, scale=True),
+        v2.Normalize((0.4355, 0.3777, 0.2879), (0.2653, 0.2124, 0.2194))])
+    alka_set = AlkaDataset('../dataset/102flowers', transform=data_tf, load_to_ram=False)
+    train_ratio = 0.8
+    dataset_size = len(alka_set)
+    train_size = int(train_ratio * dataset_size)
+    test_size = dataset_size - train_size
 
-    Returns:
-        embeddings (np.array): Embedding matrix with shape (N, d) where N is
-            the size of word2idx and d is embedding dimension
-    """
+    train_set, val_set = random_split(alka_set, [train_size, test_size])
 
-    print("Loading pretrained vectors...")
-    fin = open(fname, 'r', encoding='utf-8', newline='\n', errors='ignore')
-    n, d = map(int, fin.readline().split())
+    train_set_len = len(train_set)
+    val_set_len = len(val_set)
 
-    # Initialize random embeddings
-    embeddings = np.random.uniform(-0.25, 0.25, (len(word2idx), d))
-    embeddings[word2idx['<PAD>']] = np.zeros((d,))
+    print(f"Train Data Length: {train_set_len}")
+    print(f"Validation Data Length: {val_set_len}")
 
-    # Load pretrained vectors
-    count = 0
-    for line in notebook.tqdm(fin):
-        tokens = line.rstrip().split(' ')
-        word = tokens[0]
-        if word in word2idx:
-            count += 1
-            embeddings[word2idx[word]] = np.array(tokens[1:], dtype=np.float32)
+    train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True, num_workers=4)
+    val_loader = DataLoader(dataset=val_set, batch_size=batch_size, shuffle=False, num_workers=4)
 
-    print(f"There are {count} / {len(word2idx)} pretrained vectors found.")
-
-    return embeddings
+    return alka_set, train_loader, val_loader
 
 
-def topk_accuracy(output, target, k=1):
-    _, predicted_topk = outputs.topk(k, dim=1)
-    acc = predicted_topk.eq(labels.view(-1, 1)).sum().item()
+def build_model(word2idx, dropout: float):
+    embeddings = load_pretrained_vectors(word2idx, "../data/crawl-300d-2M.vec")
+    embeddings = torch.tensor(embeddings)
+    num_classes = 102
+    net_obj = ALKA(num_classes=num_classes, dropout=dropout, pretrained_embedding=embeddings).to(
+        training_device)
 
-    return acc
+    net_obj.load_state_dict(torch.load('../best.pth', map_location=torch.device('cpu')))
+
+    pytorch_total_params = sum(p.numel() for p in net_obj.parameters())
+    pytorch_trainable_params = sum(p.numel() for p in net_obj.parameters() if p.requires_grad)
+    print(f"TOTAL PARAMS OF ALKA: {pytorch_total_params}")
+    print(f"TRAINABLE PARAMS OF ALKA: {pytorch_trainable_params}")
+
+    return net_obj
 
 
-# Preparing the transforms
-# TODO: transforms
-data_tf = v2.Compose([
-    v2.Resize((224, 224)),
-    v2.RandomHorizontalFlip(),
-    v2.ToImage(),
-    v2.ToDtype(torch.float32, scale=True),
-    v2.Normalize((0.4355, 0.3777, 0.2879), (0.2653, 0.2124, 0.2194))])
+def build_criterion():
+    loss_fn = nn.CrossEntropyLoss()
+    return loss_fn
 
-# Preparing the Dateset
-# TODO: DATASET
-alka_set = AlkaDataset('../dataset/102flowers', transform=data_tf)
 
-val_set_len = len(alka_set)
+def build_optimizer(model, learning_rate: float, weight_decay: float):
+    optimiser = torch.optim.AdamW(model.parameters(), lr=learning_rate,
+                                  weight_decay=weight_decay)
+    return optimiser
 
-print(f"Validation Data Length: {val_set_len}")
 
-# Preparing the DataLoader
-batch_size = 128
-val_loader = DataLoader(dataset=alka_set, batch_size=batch_size, shuffle=False, num_workers=4)
-
-# Setting up the NN
-# TODO: num_classes
-embeddings = load_pretrained_vectors(alka_set.word2idx, "../data/crawl-300d-2M.vec")
-embeddings = torch.tensor(embeddings)
-num_classes = 102
-net_obj = ALKA(num_classes=num_classes, dropout=0.2, pretrained_embedding=embeddings)
-net_obj.load_state_dict(torch.load('../Saved_11.pth', map_location=torch.device('cpu')))
-
-pytorch_total_params = sum(p.numel() for p in net_obj.parameters())
-pytorch_trainable_params = sum(p.numel() for p in net_obj.parameters() if p.requires_grad)
-print(f"TOTAL PARAMS OF ALKA: {pytorch_total_params}")
-print(f"TRAINABLE PARAMS OF ALKA: {pytorch_trainable_params}")
-print(net_obj)
-# Loss function & Optimisation
-loss_fn = nn.CrossEntropyLoss()
-
-# Validating
-total_step_loss = 0
-total_accuracy = 0
-total_top5_accuarcy = 0
-steps_per_epoch = 0
-net_obj.eval()
-print(f"**************** Validating *****************")
-with torch.no_grad():
-    for images, captions, labels in val_loader:
+def train_epoch(model, train_loader, criterion, optimiser, cur_epoch: int):
+    model.train()
+    tqdm_epoch = tqdm(train_loader)
+    for images, captions, labels in tqdm_epoch:
         images = images.to(training_device)
         captions = captions.to(training_device)
         labels = labels.to(training_device)
-        outputs = net_obj(images, captions)
-        loss = loss_fn(outputs, labels)
-        total_step_loss += loss.item()
-        steps_per_epoch += 1
+        outputs = model(images, captions)
+        loss = criterion(outputs, labels)
 
-        print(f"Step: {steps_per_epoch}, Loss: {loss.item()}")
-        total_accuracy += topk_accuracy(outputs, labels)
-        total_top5_accuarcy += topk_accuracy(outputs, labels, k=5)
+        # Optimizing
+        optimiser.zero_grad()
+        loss.backward()
+        optimiser.step()
 
-    print(f"Total Loss on Dataset: {total_step_loss / steps_per_epoch}")
-    print(f"Top-1 Accuracy on Dataset: {total_accuracy / val_set_len}")
-    print(f"Top-5 Accuracy on Dataset: {total_top5_accuarcy / val_set_len}")
-    # writer.add_scalar("val_loss", total_step_loss, total_val_step)
-    # writer.add_scalar("val_acc", total_accuracy / val_set_len, total_val_step)
+        accuracy = topk_accuracy(outputs, labels)
+        tqdm_epoch.set_description("Training Epoch: %d" % cur_epoch)
+        tqdm_epoch.set_postfix(loss=loss.item(), accuracy=str(accuracy / 16 * 100)+'%')
+        wandb.log({"train_loss": loss.item()})
+
+
+def val_epoch(model, val_loader, criterion, cur_epoch: int):
+    total_step_loss = 0.0
+    steps_per_epoch = 0
+    total_accuracy = 0.0
+    total_top5_accuracy = 0.0
+    val_set_len = len(val_loader.dataset)
+
+    model.eval()
+    tqdm_epoch = tqdm(val_loader)
+    with torch.no_grad():
+        for images, captions, labels in tqdm_epoch:
+            images = images.to(training_device)
+            captions = captions.to(training_device)
+            labels = labels.to(training_device)
+            outputs = model(images, captions)
+            loss = criterion(outputs, labels)
+
+            total_step_loss += loss.item()
+            steps_per_epoch += 1
+            accuracy = topk_accuracy(outputs, labels)
+            top5_accuracy = topk_accuracy(outputs, labels, k=5)
+            total_accuracy += accuracy
+            total_top5_accuracy += top5_accuracy
+            tqdm_epoch.set_description("Validation Epoch: %d" % cur_epoch)
+            tqdm_epoch.set_postfix(loss=loss.item(), accuracy=str(accuracy / 2 * 100)+'%',
+                                   top5_accuracy=str(top5_accuracy / 2 * 100)+'%')
+
+        print(f"Total loss on dataset: {total_step_loss / steps_per_epoch}")
+        print(f"Top-1 accuracy on dataset: {total_accuracy / val_set_len}")
+        print(f"Top-5 accuracy on dataset: {total_top5_accuracy / val_set_len}")
+        wandb.log({"acc@1": total_accuracy / val_set_len, "acc@5": total_top5_accuracy / val_set_len,
+                   "val_loss": total_step_loss / steps_per_epoch})
+
+        return (total_accuracy / val_set_len)
+
+
+def train():
+    wandb.init(
+        # Set the project where this run will be logged
+        project="alka",
+        # Track hyperparameters and run metadata
+        config={
+            "model": "alka-master",
+            "learning_rate": 3e-4,
+            "weight_decay": 1e-4,
+            "dropout": 0.2,
+            "heads": 8,
+            "batch_size": 2,
+            "dataset": "AlkaSet",
+            "epochs": 30,
+        })
+
+    alka_set, train_loader, val_loader = build_dataset(batch_size=wandb.config.batch_size)
+    net_obj = build_model(alka_set.word2idx, wandb.config.dropout)
+    criterion = build_criterion()
+
+    epoch = wandb.config.epochs
+    best_acc = 0.0
+    for i in range(epoch):
+        acc = val_epoch(net_obj, val_loader, criterion, i + 1)
+        if acc > best_acc:
+            best_acc = acc
+
+    print(f"Best Accuracy: {best_acc}")
+
+    wandb.finish()
+
+
+if __name__ == "__main__":
+    set_seed(999)
+    train()
+
+
 
 
