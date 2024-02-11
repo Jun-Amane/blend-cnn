@@ -69,7 +69,7 @@ def build_m_cnn(word2idx, max_len, dropout: float):
     embeddings = load_pretrained_vectors(word2idx, "../data/crawl-300d-2M.vec")
     embeddings = torch.tensor(embeddings)
     num_classes = 102
-    net_obj = Modified_m_CNN(num_filters=256, filter_sizes=[2,3,4], MAX_SEQUENCE_LENGTH=max_len, embedding_matrix=embeddings, EMBEDDING_DIM=300, DROP_OUT=dropout, DROP_OUT2=dropout).to(
+    net_obj = Modified_m_CNN(num_filters=256, filter_sizes=[2,3,4], max_sequence_length=max_len, embedding_matrix=embeddings, embedding_dim=300, drop_out=dropout, drop_out2=dropout).to(
         training_device)
 
     pytorch_total_params = sum(p.numel() for p in net_obj.parameters())
