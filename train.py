@@ -11,7 +11,6 @@ from tqdm import notebook
 from tqdm import tqdm
 import numpy as np
 import random
-from torch.nn.utils.rnn import pad_sequence
 
 from ALKA import ALKA
 from dataset import AlkaDataset
@@ -23,12 +22,6 @@ training_device = "cpu"
 os.environ["WANDB_MODE"] = "offline"
 
 def build_dataset(batch_size: int):
-
-    def collate_fn(batch):
-        images, captions, labels = zip(*batch)
-        captions_pad = pad_sequence(captions, batch_first=True)
-        return images, captions_pad, labels
-
     data_tf = v2.Compose([
         v2.Resize((320, 320), interpolation=InterpolationMode.BICUBIC),
         v2.CenterCrop((300, 300)),
@@ -51,15 +44,17 @@ def build_dataset(batch_size: int):
     print(f"Train Data Length: {train_set_len}")
     print(f"Validation Data Length: {val_set_len}")
 
-    train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True, num_workers=4, collate_fn=collate_fn)
-    val_loader = DataLoader(dataset=val_set, batch_size=batch_size, shuffle=False, num_workers=4, collate_fn=collate_fn)
+    train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True, num_workers=4)
+    val_loader = DataLoader(dataset=val_set, batch_size=batch_size, shuffle=False, num_workers=4)
 
     return alka_set, train_loader, val_loader
 
 
-def build_model(dropout: float):
+def build_model(word2idx, dropout: float):
+    embeddings = load_pretrained_vectors(word2idx, "../data/crawl-300d-2M.vec")
+    embeddings = torch.tensor(embeddings)
     num_classes = 102
-    net_obj = ALKA(num_classes=num_classes, dropout=dropout).to(
+    net_obj = ALKA(num_classes=num_classes, dropout=dropout, pretrained_embedding=embeddings).to(
         training_device)
 
     pytorch_total_params = sum(p.numel() for p in net_obj.parameters())
@@ -149,13 +144,13 @@ def train():
             "weight_decay": 1e-4,
             "dropout": 0.2,
             "heads": 8,
-            "batch_size": 2,
+            "batch_size": 16,
             "dataset": "AlkaSet",
             "epochs": 30,
         })
 
     alka_set, train_loader, val_loader = build_dataset(batch_size=wandb.config.batch_size)
-    net_obj = build_model(wandb.config.dropout)
+    net_obj = build_model(alka_set.word2idx, wandb.config.dropout)
     criterion = build_criterion()
     optimiser = build_optimizer(net_obj, wandb.config.learning_rate, wandb.config.weight_decay)
 
