@@ -5,8 +5,6 @@ import torch
 import torch.nn.functional as F
 from nltk.tokenize import word_tokenize
 from collections import defaultdict
-from torchtext.vocab import GloVe
-from torchtext.data import get_tokenizer
 
 
 class AlkaDataset(Dataset):
@@ -19,10 +17,8 @@ class AlkaDataset(Dataset):
 
         self.image_files = {}
         self.classes = os.listdir(self.text_folder)
-        self.tokenizer = get_tokenizer('basic_english')
-        self.embedding = GloVe()
 
-        self.tokenized_descriptions, self.class_hash_table, self.class_list, self.basename_list = self.load_descriptions()
+        self.tokenized_descriptions, self.class_hash_table, self.class_list, self.word2idx, self.basename_list = self.load_descriptions()
         for basename in self.basename_list:
             if self.load_to_ram:
                 cur_img = Image.open(os.path.join(self.image_folder, basename + ".jpg"))
@@ -40,7 +36,11 @@ class AlkaDataset(Dataset):
         class_list = []
         basename_list = []
 
-        encoded_descriptions = {}
+        max_len = 0
+        tokenized_descriptions = {}
+        tokenized_sentences = {}
+        word2idx = {'<PAD>': 0, '<UNK>': 1}
+        idx = 2
 
         for i in range(len(self.classes)):
             for cap_name in os.listdir(os.path.join(self.text_folder, self.classes[i])):
@@ -55,13 +55,27 @@ class AlkaDataset(Dataset):
                     descriptions[basename] = sentences
                     class_hash_table[basename] = self.classes[i]
 
-                    tokenized_sent = self.tokenizer(sentences)
-                    encoded_descriptions[basename] = self.embedding.get_vecs_by_tokens(tokenized_sent)
+                    tokenized_sent = word_tokenize(sentences)
+                    tokenized_sentences[basename] = tokenized_sent
+                    for token in tokenized_sent:
+                        if token not in word2idx:
+                            word2idx[token] = idx
+                            idx += 1
 
+                    max_len = max(max_len, len(tokenized_sent))
             class_list.append(self.classes[i])
 
+        for i in range(len(self.classes)):
+            for cap_name in os.listdir(os.path.join(self.text_folder, self.classes[i])):
+                basename = os.path.splitext(cap_name)[0]
+                tokenized_sent = tokenized_sentences[basename]
+                tokenized_sent += ['<PAD>'] * (max_len - len(tokenized_sent))
 
-        return encoded_descriptions, class_hash_table, class_list, basename_list
+                input_id = [word2idx.get(token) for token in tokenized_sent]
+                tokenized_descriptions[basename] = torch.tensor(input_id)
+        print(max_len)
+
+        return tokenized_descriptions, class_hash_table, class_list, word2idx, basename_list
 
     def __len__(self):
         return len(self.image_files)
