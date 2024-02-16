@@ -5,9 +5,10 @@ import torch
 import torch.nn.functional as F
 from nltk.tokenize import word_tokenize
 from collections import defaultdict
+from transformers import BertTokenizer
 
 
-class AlkaDataset(Dataset):
+class AlkaDatasetBert(Dataset):
     def __init__(self, root_dir, transform=None, load_to_ram=True):
         self.root_dir = root_dir
         self.transform = transform
@@ -18,7 +19,7 @@ class AlkaDataset(Dataset):
         self.image_files = {}
         self.classes = os.listdir(self.text_folder)
 
-        self.tokenized_descriptions, self.class_hash_table, self.class_list, self.word2idx, self.basename_list, self.max_len = self.load_descriptions()
+        self.tokenized_descriptions, self.class_hash_table, self.class_list, self.basename_list, self.attention_masks = self.load_descriptions()
         for basename in self.basename_list:
             if self.load_to_ram:
                 cur_img = Image.open(os.path.join(self.image_folder, basename + ".jpg"))
@@ -29,18 +30,15 @@ class AlkaDataset(Dataset):
                 cur_img = os.path.join(self.image_folder, basename + ".jpg")
                 self.image_files[basename] = cur_img
 
-
     def load_descriptions(self):
         descriptions = {}
         class_hash_table = {}
         class_list = []
         basename_list = []
 
-        max_len = 0
+        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
         tokenized_descriptions = {}
-        tokenized_sentences = {}
-        word2idx = {'<PAD>': 0, '<UNK>': 1}
-        idx = 2
+        attention_masks = {}
 
         for i in range(len(self.classes)):
             for cap_name in os.listdir(os.path.join(self.text_folder, self.classes[i])):
@@ -55,27 +53,15 @@ class AlkaDataset(Dataset):
                     descriptions[basename] = sentences
                     class_hash_table[basename] = self.classes[i]
 
-                    tokenized_sent = word_tokenize(sentences)
-                    tokenized_sentences[basename] = tokenized_sent
-                    for token in tokenized_sent:
-                        if token not in word2idx:
-                            word2idx[token] = idx
-                            idx += 1
+                    tokenized_sent = tokenizer(sentences, padding='max_length', max_len=512, truncation=True,
+                                               return_tensors='pt')
+                    tokenized_descriptions[basename] = tokenized_sent['input_ids']
+                    attention_masks[basename] = tokenized_sent['attention_mask']
 
-                    max_len = max(max_len, len(tokenized_sent))
+
             class_list.append(self.classes[i])
 
-        for i in range(len(self.classes)):
-            for cap_name in os.listdir(os.path.join(self.text_folder, self.classes[i])):
-                basename = os.path.splitext(cap_name)[0]
-                tokenized_sent = tokenized_sentences[basename]
-                tokenized_sent += ['<PAD>'] * (max_len - len(tokenized_sent))
-
-                input_id = [word2idx.get(token) for token in tokenized_sent]
-                tokenized_descriptions[basename] = torch.tensor(input_id)
-        print(max_len)
-
-        return tokenized_descriptions, class_hash_table, class_list, word2idx, basename_list, max_len
+        return tokenized_descriptions, class_hash_table, class_list, basename_list, attention_masks
 
     def __len__(self):
         return len(self.image_files)
@@ -95,8 +81,9 @@ class AlkaDataset(Dataset):
         class_label = torch.tensor(class_label)
 
         descriptions = self.tokenized_descriptions[basename]
+        attn_msk = self.attention_masks[basename]
 
-        return image, descriptions, None, class_label
+        return image, descriptions, attn_msk, class_label
 
 # dataset = MultimodalDataset(root_dir='../dataset/102flowers')
 # img, cap, clz = dataset[0]
