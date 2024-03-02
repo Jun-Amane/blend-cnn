@@ -15,7 +15,7 @@ class AlkaTextCNN(nn.Module):
 
         super(AlkaTextCNN, self).__init__()
         if num_filters is None:
-            num_filters = [384, 384, 384, 384]
+            num_filters = [1536, 1536, 1536, 1536]
         if filter_sizes is None:
             filter_sizes = [3, 4, 5, 6]
 
@@ -57,7 +57,6 @@ class AlkaTextCNN(nn.Module):
 
         # Concatenate x_pool_list to feed the fully connected layer.
         # Output shape: (b, sum(num_filters))
-        x_hidden = torch.cat([x_pool.squeeze(dim=2) for x_pool in x_pool_list],
-                         dim=1)
+        x_hidden = [x_pool.squeeze(dim=2) for x_pool in x_pool_list]
 
         return x_hidden
