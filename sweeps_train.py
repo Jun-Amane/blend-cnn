@@ -177,7 +177,7 @@ if __name__ == "__main__":
     }
     metric = {
         'name': 'best_acc',
-        'goal': 'maximize'
+       'goal': 'maximize'
     }
 
     sweep_config['metric'] = metric

@@ -28,8 +28,9 @@ def build_dataset(batch_size: int):
         v2.RandomHorizontalFlip(),
         v2.ToImage(),
         v2.ToDtype(torch.float32, scale=True),
-        v2.Normalize((0.4355, 0.3777, 0.2879), (0.2653, 0.2124, 0.2194))])
-    alka_set = AlkaDataset('../dataset/102flowers', transform=data_tf, load_to_ram=False)
+        v2.Normalize((0.47923476, 0.50895864, 0.36353514), (0.20820487, 0.19914062, 0.1981524))])
+
+    alka_set = AlkaDataset('../../dataset/wheat_img', transform=data_tf, load_to_ram=False)
     train_ratio = 0.8
     dataset_size = len(alka_set)
     train_size = int(train_ratio * dataset_size)
@@ -50,13 +51,12 @@ def build_dataset(batch_size: int):
 
 
 def build_model(word2idx, dropout: float):
-    embeddings = load_pretrained_vectors(word2idx, "../data/crawl-300d-2M.vec")
-    embeddings = torch.tensor(embeddings)
-    num_classes = 102
-    net_obj = ALKA(num_classes=num_classes, dropout=dropout, pretrained_embedding=embeddings).to(
-        training_device)
+    embeddings = 0
+    num_classes = 11
+    # net_obj = ALKA(num_classes=num_classes, dropout=dropout, pretrained_embedding=embeddings).to(
+     #   training_device)
 
-    net_obj.load_state_dict(torch.load('../best.pth', map_location=torch.device('cpu')))
+    net_obj = torch.load('best.pt', map_location='cpu')
 
     pytorch_total_params = sum(p.numel() for p in net_obj.parameters())
     pytorch_trainable_params = sum(p.numel() for p in net_obj.parameters() if p.requires_grad)
@@ -155,11 +155,7 @@ def train():
     criterion = build_criterion()
 
     epoch = wandb.config.epochs
-    best_acc = 0.0
-    for i in range(epoch):
-        acc = val_epoch(net_obj, val_loader, criterion, i + 1)
-        if acc > best_acc:
-            best_acc = acc
+    best_acc = val_epoch(net_obj, val_loader, criterion, 1)
 
     print(f"Best Accuracy: {best_acc}")
 

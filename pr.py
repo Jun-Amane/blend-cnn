@@ -1,6 +1,7 @@
 import os
 import torch
 import torchvision
+from jupyter_core.migrate import config_substitutions
 from torchvision.transforms import v2, InterpolationMode
 import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
@@ -17,7 +18,7 @@ from dataset import AlkaDataset
 
 from util import *
 
-training_device = "cuda"
+training_device = "cpu"
 
 os.environ["WANDB_MODE"] = "offline"
 
@@ -26,11 +27,11 @@ def build_dataset(batch_size: int):
         v2.Resize((320, 320), interpolation=InterpolationMode.BICUBIC),
         v2.CenterCrop((300, 300)),
         v2.RandomHorizontalFlip(),
-        v2.RandomVerticalFlip(),
         v2.ToImage(),
         v2.ToDtype(torch.float32, scale=True),
         v2.Normalize((0.47923476, 0.50895864, 0.36353514), (0.20820487, 0.19914062, 0.1981524))])
-    alka_set = AlkaDataset('../dataset/wheat_img', transform=data_tf, load_to_ram=True)
+
+    alka_set = AlkaDataset('../../dataset/wheat_img', transform=data_tf, load_to_ram=False)
     train_ratio = 0.8
     dataset_size = len(alka_set)
     train_size = int(train_ratio * dataset_size)
@@ -53,8 +54,10 @@ def build_dataset(batch_size: int):
 def build_model(word2idx, dropout: float):
     embeddings = 0
     num_classes = 11
-    net_obj = ALKA(num_classes=num_classes, dropout=dropout, pretrained_embedding=embeddings).to(
-        training_device)
+    # net_obj = ALKA(num_classes=num_classes, dropout=dropout, pretrained_embedding=embeddings).to(
+     #   training_device)
+
+    net_obj = torch.load('best.pt', map_location='cpu')
 
     pytorch_total_params = sum(p.numel() for p in net_obj.parameters())
     pytorch_trainable_params = sum(p.numel() for p in net_obj.parameters() if p.requires_grad)
@@ -96,12 +99,21 @@ def train_epoch(model, train_loader, criterion, optimiser, cur_epoch: int):
         wandb.log({"train_loss": loss.item()})
 
 
+def confusion_matrix(preds, labels, conf_matrix):
+    preds = torch.argmax(preds, 1)
+    for p, t in zip(preds, labels):
+        conf_matrix[p, t] += 1
+    return conf_matrix
+
+
 def val_epoch(model, val_loader, criterion, cur_epoch: int):
     total_step_loss = 0.0
     steps_per_epoch = 0
     total_accuracy = 0.0
     total_top5_accuracy = 0.0
     val_set_len = len(val_loader.dataset)
+
+    conf_matrix = torch.zeros(11, 11)
 
     model.eval()
     tqdm_epoch = tqdm(val_loader)
@@ -120,8 +132,12 @@ def val_epoch(model, val_loader, criterion, cur_epoch: int):
             total_accuracy += accuracy
             total_top5_accuracy += top5_accuracy
             tqdm_epoch.set_description("Validation Epoch: %d" % cur_epoch)
-            tqdm_epoch.set_postfix(loss=loss.item(), accuracy=str(accuracy / 16 * 100)+'%',
-                                   top5_accuracy=str(top5_accuracy / 16 * 100)+'%')
+            tqdm_epoch.set_postfix(loss=loss.item(), accuracy=str(accuracy / 2 * 100)+'%',
+                                   top5_accuracy=str(top5_accuracy / 2 * 100)+'%')
+
+            conf_matrix = confusion_matrix(outputs.squeeze(), labels.squeeze(), conf_matrix)
+
+
 
         print(f"Total loss on dataset: {total_step_loss / steps_per_epoch}")
         print(f"Top-1 accuracy on dataset: {total_accuracy / val_set_len}")
@@ -129,7 +145,7 @@ def val_epoch(model, val_loader, criterion, cur_epoch: int):
         wandb.log({"acc@1": total_accuracy / val_set_len, "acc@5": total_top5_accuracy / val_set_len,
                    "val_loss": total_step_loss / steps_per_epoch})
 
-        return (total_accuracy / val_set_len)
+        return (total_accuracy / val_set_len), conf_matrix
 
 
 def train():
@@ -143,7 +159,7 @@ def train():
             "weight_decay": 1e-4,
             "dropout": 0.2,
             "heads": 8,
-            "batch_size": 16,
+            "batch_size": 2,
             "dataset": "AlkaSet",
             "epochs": 30,
         })
@@ -151,17 +167,14 @@ def train():
     alka_set, train_loader, val_loader = build_dataset(batch_size=wandb.config.batch_size)
     net_obj = build_model(alka_set.word2idx, wandb.config.dropout)
     criterion = build_criterion()
-    optimiser = build_optimizer(net_obj, wandb.config.learning_rate, wandb.config.weight_decay)
 
     epoch = wandb.config.epochs
-    best_acc = 0.0
-    for i in range(epoch):
-        train_epoch(net_obj, train_loader, criterion, optimiser, i + 1)
-        acc = val_epoch(net_obj, val_loader, criterion, i + 1)
-        if acc > best_acc:
-            best_acc = acc
-            wandb.run.summary["best_acc"] = best_acc
-            torch.save(net_obj, 'best.pt')
+    best_acc, conf_matrix = val_epoch(net_obj, val_loader, criterion, 1)
+
+    conf_matrix = np.array(conf_matrix.cpu())  # 将混淆矩阵从gpu转到cpu再转到np
+    corrects = conf_matrix.diagonal(offset=0)  # 抽取对角线的每种分类的识别正确个数
+    per_kinds = conf_matrix.sum(axis=1)  # 抽取每个分类数据总的测试条数
+    print(conf_matrix)
 
     print(f"Best Accuracy: {best_acc}")
 
@@ -171,4 +184,7 @@ def train():
 if __name__ == "__main__":
     set_seed(999)
     train()
+
+
+
 
